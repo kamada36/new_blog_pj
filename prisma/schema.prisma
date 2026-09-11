@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// 管理者（現状は単一管理者を想定）
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  bio          String    @default("")
+  avatarUrl    String?
+  snsX         String?
+  snsThreads   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  articles     Article[]
+}
+
+// サイト全体の基本設定（シングルトン運用）
+model SiteSetting {
+  id              String @id @default(cuid())
+  siteName        String @default("レジリエンサーCafe")
+  tagline         String @default("YOUR RESILIENCE MATTERS!")
+  footerCopyright String @default("レジリエンサーCafe")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String    @default("")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  articles    Article[]
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  articles  Article[]
+}
+
+model Article {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  excerpt         String    @default("")
+  contentMarkdown String
+  coverImageUrl   String?
+  status          String    @default("draft") // "draft" | "published"
+  publishedAt     DateTime?
+  viewCount       Int       @default(0)
+  metaTitle       String    @default("")
+  metaDescription String    @default("")
+  metaKeywords    String    @default("")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+
+  tags Tag[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId])
+}
+
+// 固定ページ（プロフィール/サイト概要/プライバシーポリシー等）
+model Page {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  contentMarkdown String
+  metaTitle       String   @default("")
+  metaDescription String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// お問い合わせフォームの送信内容
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+}
