@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 12;
@@ -19,7 +20,9 @@ const cardSelect = {
   category: { select: { id: true, name: true, slug: true } },
 } as const;
 
-export async function getSiteSetting() {
+// Header/Footer/Sidebar(デスクトップ)/Sidebar(モバイルドロワー)など、
+// 同一リクエスト内で複数箇所から呼ばれるため、リクエスト単位でメモ化する。
+export const getSiteSetting = cache(async function getSiteSetting() {
   const setting = await prisma.siteSetting.findFirst();
   return (
     setting ?? {
@@ -34,15 +37,15 @@ export async function getSiteSetting() {
       heroCharacterAikoUrl: null,
     }
   );
-}
+});
 
-export async function getPrimaryAuthor() {
+export const getPrimaryAuthor = cache(async function getPrimaryAuthor() {
   return prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
-}
+});
 
-export async function getCategories() {
+export const getCategories = cache(async function getCategories() {
   return prisma.category.findMany({ orderBy: { order: "asc" } });
-}
+});
 
 export async function getCategoryBySlug(slug: string) {
   return prisma.category.findUnique({ where: { slug } });
@@ -70,16 +73,16 @@ export async function getArticlesByCategory(categoryId: string, limit = 4) {
   });
 }
 
-export async function getPopularArticles(limit = 5) {
+export const getPopularArticles = cache(async function getPopularArticles(limit = 5) {
   return prisma.article.findMany({
     where: publishedWhere,
     orderBy: { viewCount: "desc" },
     take: limit,
     select: cardSelect,
   });
-}
+});
 
-export async function getArchiveMonths() {
+export const getArchiveMonths = cache(async function getArchiveMonths() {
   const articles = await prisma.article.findMany({
     where: publishedWhere,
     select: { publishedAt: true },
@@ -98,7 +101,7 @@ export async function getArchiveMonths() {
     }
   }
   return Array.from(counts.values()).sort((a, b) => (a.year !== b.year ? b.year - a.year : b.month - a.month));
-}
+});
 
 export async function getArticlesPage(params: {
   where?: Record<string, unknown>;
