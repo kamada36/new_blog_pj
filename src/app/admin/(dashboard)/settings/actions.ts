@@ -29,7 +29,32 @@ export async function updateSiteSetting(formData: FormData) {
     create: { id: "singleton", ...parsed.data },
   });
 
-  revalidatePath("/");
-  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout");
+  redirect("/admin/settings?status=success");
+}
+
+const sponsorSlotsSchema = z.object({
+  sponsorSidebarEmbed: z.string().trim().max(5000),
+  sponsorFooterEmbed: z.string().trim().max(5000),
+});
+
+export async function updateSponsorSlots(formData: FormData) {
+  const parsed = sponsorSlotsSchema.safeParse({
+    sponsorSidebarEmbed: formData.get("sponsorSidebarEmbed") ?? "",
+    sponsorFooterEmbed: formData.get("sponsorFooterEmbed") ?? "",
+  });
+
+  if (!parsed.success) {
+    redirect(`/admin/settings?error=${encodeURIComponent("広告タグの入力内容をご確認ください。")}`);
+    return;
+  }
+
+  await prisma.siteSetting.upsert({
+    where: { id: "singleton" },
+    update: parsed.data,
+    create: { id: "singleton", ...parsed.data },
+  });
+
+  revalidatePath("/", "layout");
   redirect("/admin/settings?status=success");
 }

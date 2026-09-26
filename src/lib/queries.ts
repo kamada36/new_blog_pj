@@ -27,6 +27,8 @@ export async function getSiteSetting() {
       siteName: "レジリエンサーCafe",
       tagline: "YOUR RESILIENCE MATTERS!",
       footerCopyright: "Resilient-cer Cafe",
+      sponsorSidebarEmbed: "",
+      sponsorFooterEmbed: "",
     }
   );
 }

@@ -5,10 +5,12 @@ import {
   getCategories,
   getPopularArticles,
   getPrimaryAuthor,
+  getSiteSetting,
 } from "@/lib/queries";
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { IconMug, IconCap } from "@/components/icons/CafeIcons";
 import { ArticleRowCard } from "@/components/article/ArticleRowCard";
+import { SponsorEmbed } from "@/components/layout/SponsorEmbed";
 
 const MONTH_NAMES = [
   "1月", "2月", "3月", "4月", "5月", "6月",
@@ -16,11 +18,12 @@ const MONTH_NAMES = [
 ];
 
 export async function Sidebar() {
-  const [popular, archive, categories, author] = await Promise.all([
+  const [popular, archive, categories, author, siteSetting] = await Promise.all([
     getPopularArticles(5),
     getArchiveMonths(),
     getCategories(),
     getPrimaryAuthor(),
+    getSiteSetting(),
   ]);
   const viewStatsMap = await getAdminViewStatsForArticles(popular);
 
@@ -88,6 +91,15 @@ export async function Sidebar() {
           プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。
         </p>
       </section>
+
+      {siteSetting.sponsorSidebarEmbed && (
+        <section className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="font-display text-sm font-bold text-foreground-muted">スポンサーリンク</h2>
+          <div className="mt-3 flex justify-center">
+            <SponsorEmbed html={siteSetting.sponsorSidebarEmbed} />
+          </div>
+        </section>
+      )}
 
       {popular.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
