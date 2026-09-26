@@ -28,6 +28,16 @@ model SiteSetting {
   siteName        String @default("レジリエンサーCafe")
   tagline         String @default("YOUR RESILIENCE MATTERS!")
   footerCopyright String @default("レジリエンサーCafe")
+
+  // スポンサーリンク(アフィリエイト広告)の埋め込みHTML。ASPが発行するコードをそのまま保存し、
+  // 表示側で一切のリサイズ・加工をしない(規約上、改変不可のため)。
+  sponsorSidebarEmbed String @default("") // ウィジェット枠(正方形〜縦長長方形の広告を想定)
+  sponsorFooterEmbed  String @default("") // フッター上部(横長バナー広告を想定)
+
+  // トップページ見出し(ヒーローセクション)の画像
+  heroBackgroundUrl         String? // 背景画像
+  heroCharacterResilientUrl String? // キャラクター「レジサン」
+  heroCharacterAikoUrl      String? // キャラクター「アイコ」
 }
 
 model Category {
@@ -72,9 +82,24 @@ model Article {
   authorId String
 
   tags Tag[]
+  views ArticleView[]
 
   @@index([status, publishedAt])
   @@index([categoryId])
+}
+
+// 記事の閲覧ログ（本日/週間/月間の集計、および重複アクセスの除外用）
+model ArticleView {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  // IP+UAを一方向ハッシュ化した訪問者識別子（生IPは保存しない）
+  visitorHash String @default("")
+
+  article   Article @relation(fields: [articleId], references: [id])
+  articleId String
+
+  @@index([articleId, createdAt])
+  @@index([articleId, visitorHash, createdAt])
 }
 
 // 固定ページ（プロフィール/サイト概要/プライバシーポリシー等）

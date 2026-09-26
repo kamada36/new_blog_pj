@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 12;
@@ -19,7 +20,9 @@ const cardSelect = {
   category: { select: { id: true, name: true, slug: true } },
 } as const;
 
-export async function getSiteSetting() {
+// Header/Footer/Sidebar(デスクトップ)/Sidebar(モバイルドロワー)など、
+// 同一リクエスト内で複数箇所から呼ばれるため、リクエスト単位でメモ化する。
+export const getSiteSetting = cache(async function getSiteSetting() {
   const setting = await prisma.siteSetting.findFirst();
   return (
     setting ?? {
@@ -27,17 +30,22 @@ export async function getSiteSetting() {
       siteName: "レジリエンサーCafe",
       tagline: "YOUR RESILIENCE MATTERS!",
       footerCopyright: "Resilient-cer Cafe",
+      sponsorSidebarEmbed: "",
+      sponsorFooterEmbed: "",
+      heroBackgroundUrl: null,
+      heroCharacterResilientUrl: null,
+      heroCharacterAikoUrl: null,
     }
   );
-}
+});
 
-export async function getPrimaryAuthor() {
+export const getPrimaryAuthor = cache(async function getPrimaryAuthor() {
   return prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
-}
+});
 
-export async function getCategories() {
+export const getCategories = cache(async function getCategories() {
   return prisma.category.findMany({ orderBy: { order: "asc" } });
-}
+});
 
 export async function getCategoryBySlug(slug: string) {
   return prisma.category.findUnique({ where: { slug } });
@@ -65,16 +73,16 @@ export async function getArticlesByCategory(categoryId: string, limit = 4) {
   });
 }
 
-export async function getPopularArticles(limit = 5) {
+export const getPopularArticles = cache(async function getPopularArticles(limit = 5) {
   return prisma.article.findMany({
     where: publishedWhere,
     orderBy: { viewCount: "desc" },
     take: limit,
     select: cardSelect,
   });
-}
+});
 
-export async function getArchiveMonths() {
+export const getArchiveMonths = cache(async function getArchiveMonths() {
   const articles = await prisma.article.findMany({
     where: publishedWhere,
     select: { publishedAt: true },
@@ -93,7 +101,7 @@ export async function getArchiveMonths() {
     }
   }
   return Array.from(counts.values()).sort((a, b) => (a.year !== b.year ? b.year - a.year : b.month - a.month));
-}
+});
 
 export async function getArticlesPage(params: {
   where?: Record<string, unknown>;
@@ -133,11 +141,75 @@ export async function getArticleBySlug(slug: string) {
   });
 }
 
-export async function incrementArticleViewCount(id: string) {
-  await prisma.article.update({
-    where: { id },
-    data: { viewCount: { increment: 1 } },
+// 同一訪問者(IP+UAのハッシュ)による短時間の再読み込み・再訪問は
+// カウントしない。WordPressの主要な閲覧数計測プラグインも同様に
+// 「一定期間内は1visitorにつき1カウント」という重複排除を行っている。
+const VIEW_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24時間
+
+export async function recordArticleView(id: string, visitorHash: string) {
+  const since = new Date(Date.now() - VIEW_DEDUP_WINDOW_MS);
+  const recentDuplicate = await prisma.articleView.findFirst({
+    where: { articleId: id, visitorHash, createdAt: { gte: since } },
+    select: { id: true },
   });
+  if (recentDuplicate) return;
+
+  await prisma.$transaction([
+    prisma.article.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+    }),
+    prisma.articleView.create({ data: { articleId: id, visitorHash } }),
+  ]);
+}
+
+export type ArticleViewStats = {
+  today: number;
+  week: number;
+  month: number;
+  total: number;
+};
+
+export async function getArticleViewStatsMap(
+  articleIds: string[]
+): Promise<Map<string, ArticleViewStats>> {
+  const map = new Map<string, ArticleViewStats>();
+  if (articleIds.length === 0) return map;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const daysSinceMonday = (startOfToday.getDay() + 6) % 7;
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfToday.getDate() - daysSinceMonday);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [monthViews, articles] = await Promise.all([
+    prisma.articleView.findMany({
+      where: { articleId: { in: articleIds }, createdAt: { gte: startOfMonth } },
+      select: { articleId: true, createdAt: true },
+    }),
+    prisma.article.findMany({
+      where: { id: { in: articleIds } },
+      select: { id: true, viewCount: true },
+    }),
+  ]);
+
+  for (const id of articleIds) {
+    map.set(id, { today: 0, week: 0, month: 0, total: 0 });
+  }
+  for (const view of monthViews) {
+    const stats = map.get(view.articleId);
+    if (!stats) continue;
+    stats.month += 1;
+    if (view.createdAt >= startOfWeek) stats.week += 1;
+    if (view.createdAt >= startOfToday) stats.today += 1;
+  }
+  for (const article of articles) {
+    const stats = map.get(article.id);
+    if (stats) stats.total = article.viewCount;
+  }
+
+  return map;
 }
 
 export async function getRelatedArticles(article: { id: string; categoryId: string }, limit = 4) {

@@ -5,8 +5,12 @@ import {
   getCategories,
   getPopularArticles,
   getPrimaryAuthor,
+  getSiteSetting,
 } from "@/lib/queries";
-import { IconMug } from "@/components/icons/CafeIcons";
+import { getAdminViewStatsForArticles } from "@/lib/adminView";
+import { IconMug, IconCap } from "@/components/icons/CafeIcons";
+import { ArticleRowCard } from "@/components/article/ArticleRowCard";
+import { SponsorEmbed } from "@/components/layout/SponsorEmbed";
 
 const MONTH_NAMES = [
   "1月", "2月", "3月", "4月", "5月", "6月",
@@ -14,12 +18,14 @@ const MONTH_NAMES = [
 ];
 
 export async function Sidebar() {
-  const [popular, archive, categories, author] = await Promise.all([
+  const [popular, archive, categories, author, siteSetting] = await Promise.all([
     getPopularArticles(5),
     getArchiveMonths(),
     getCategories(),
     getPrimaryAuthor(),
+    getSiteSetting(),
   ]);
+  const viewStatsMap = await getAdminViewStatsForArticles(popular);
 
   return (
     <aside className="flex flex-col gap-8">
@@ -43,47 +49,73 @@ export async function Sidebar() {
             <p className="font-display font-bold">{author.name}</p>
           </div>
           <p className="mt-3 line-clamp-4 text-sm text-foreground-muted">{author.bio}</p>
+          {(author.snsX || author.snsThreads) && (
+            <div className="mt-3 flex gap-2">
+              {author.snsX && (
+                <a
+                  href={author.snsX}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+                >
+                  X (Twitter)
+                </a>
+              )}
+              {author.snsThreads && (
+                <a
+                  href={author.snsThreads}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+                >
+                  Threads
+                </a>
+              )}
+            </div>
+          )}
           <Link href="/profile" className="mt-3 inline-block text-sm font-semibold text-accent-dark hover:underline">
             プロフィールを見る →
           </Link>
         </section>
       )}
 
-      {popular.length > 0 && (
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-sm font-bold text-foreground-muted">サイトの住人</h2>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+            <IconCap className="h-6 w-6 text-accent-dark" />
+          </div>
+          <p className="font-display font-bold">アイコ</p>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
+          プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。
+        </p>
+      </section>
+
+      {siteSetting.sponsorSidebarEmbed && (
         <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="font-display text-sm font-bold text-foreground-muted">人気記事</h2>
-          <ol className="mt-3 flex flex-col gap-3">
-            {popular.map((article, index) => (
-              <li key={article.id}>
-                <Link href={`/articles/${article.slug}`} className="group flex items-start gap-3">
-                  <span className="font-display text-lg font-black text-accent-soft group-hover:text-accent">
-                    {index + 1}
-                  </span>
-                  <span className="line-clamp-2 text-sm font-medium group-hover:text-accent-dark">
-                    {article.title}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
+          <h2 className="font-display text-sm font-bold text-foreground-muted">スポンサーリンク</h2>
+          <div className="mt-3 flex justify-center">
+            <SponsorEmbed html={siteSetting.sponsorSidebarEmbed} />
+          </div>
         </section>
       )}
 
-      <section className="rounded-2xl border border-border bg-surface p-5">
-        <h2 className="font-display text-sm font-bold text-foreground-muted">カテゴリー</h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {categories.map((category) => (
-            <li key={category.id}>
-              <Link
-                href={`/category/${category.slug}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted hover:text-accent-dark"
-              >
-                {category.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {popular.length > 0 && (
+        <section className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="font-display text-sm font-bold text-foreground-muted">人気記事</h2>
+          <div className="mt-3 flex flex-col gap-4">
+            {popular.map((article) => (
+              <ArticleRowCard
+                key={article.id}
+                article={article}
+                size="sm"
+                viewStats={viewStatsMap?.get(article.id) ?? null}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {archive.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
@@ -105,6 +137,22 @@ export async function Sidebar() {
           </ul>
         </section>
       )}
+
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-sm font-bold text-foreground-muted">カテゴリー</h2>
+        <ul className="mt-3 flex flex-col gap-2">
+          {categories.map((category) => (
+            <li key={category.id}>
+              <Link
+                href={`/category/${category.slug}`}
+                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted hover:text-accent-dark"
+              >
+                {category.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </aside>
   );
 }

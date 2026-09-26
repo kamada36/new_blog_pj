@@ -1,5 +1,6 @@
+import Image from "next/image";
 import { getSiteSetting } from "@/lib/queries";
-import { updateSiteSetting } from "./actions";
+import { updateSiteSetting, updateSponsorSlots, updateHeroAssets } from "./actions";
 
 export default async function AdminSettingsPage({ searchParams }: PageProps<"/admin/settings">) {
   const { status, error } = await searchParams;
@@ -54,6 +55,132 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           保存する
         </button>
       </form>
+
+      <div className="mt-10 max-w-lg rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-base font-bold">スポンサーリンク（アフィリエイト広告）</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          ASP(A8.net、もしもアフィリエイト等)が発行する広告タグ(HTML)をそのまま貼り付けてください。
+          規約でサイズや見た目の改変が禁止されている広告が多いため、
+          このサイト側では貼り付けたコードに対して一切リサイズ・装飾を行いません。
+          <strong className="font-semibold text-foreground">
+            下記に記載の目安サイズに収まる広告タグを選んで貼り付けてください。
+          </strong>
+        </p>
+
+        <form action={updateSponsorSlots} className="mt-4 flex flex-col gap-5">
+          <div>
+            <label className="text-sm font-semibold">ウィジェット枠（サイドバー中段）</label>
+            <p className="mt-0.5 text-xs text-foreground-muted">
+              設置可能サイズの目安: 正方形〜縦長長方形（250×250 / 300×250 / 300×300 /
+              240×400 など、横幅300px程度まで）
+            </p>
+            <textarea
+              name="sponsorSidebarEmbed"
+              defaultValue={setting.sponsorSidebarEmbed}
+              rows={5}
+              placeholder="<a href=... ><img src=... /></a> のような広告タグをそのまま貼り付け"
+              className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold">フッター上部（全ページ共通）</label>
+            <p className="mt-0.5 text-xs text-foreground-muted">
+              設置可能サイズの目安: 横長バナー（728×90 / 468×60 / 320×50
+              など、横幅728px程度まで）
+            </p>
+            <textarea
+              name="sponsorFooterEmbed"
+              defaultValue={setting.sponsorFooterEmbed}
+              rows={5}
+              placeholder="<a href=... ><img src=... /></a> のような広告タグをそのまま貼り付け"
+              className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+          >
+            広告タグを保存する
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-10 max-w-lg rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-base font-bold">トップページ見出し（ヒーローセクション）</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          背景画像とキャラクター2人の画像を設定できます。未設定の項目は表示されません。
+        </p>
+
+        <form action={updateHeroAssets} encType="multipart/form-data" className="mt-4 flex flex-col gap-5">
+          <HeroImageField
+            name="heroBackground"
+            label="背景画像"
+            hint="見出しセクション全体に敷く横長の画像を想定しています。"
+            currentUrl={setting.heroBackgroundUrl}
+          />
+          <HeroImageField
+            name="heroCharacterResilient"
+            label="キャラクター「レジサン」"
+            hint="背景の透過PNGを想定しています。見出しの左側に表示されます。"
+            currentUrl={setting.heroCharacterResilientUrl}
+          />
+          <HeroImageField
+            name="heroCharacterAiko"
+            label="キャラクター「アイコ」"
+            hint="背景の透過PNGを想定しています。見出しの右側に表示されます。"
+            currentUrl={setting.heroCharacterAikoUrl}
+          />
+
+          <button
+            type="submit"
+            className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+          >
+            画像を保存する
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function HeroImageField({
+  name,
+  label,
+  hint,
+  currentUrl,
+}: {
+  name: string;
+  label: string;
+  hint: string;
+  currentUrl: string | null;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-semibold">{label}</label>
+      <p className="mt-0.5 text-xs text-foreground-muted">{hint}</p>
+      <div className="mt-2 flex items-center gap-3">
+        {currentUrl ? (
+          <Image
+            src={currentUrl}
+            alt={label}
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-lg border border-border object-contain bg-surface-muted"
+          />
+        ) : (
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-[10px] text-foreground-muted">
+            未設定
+          </div>
+        )}
+        <input
+          type="file"
+          name={name}
+          accept="image/*"
+          className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-xs"
+        />
+      </div>
     </div>
   );
 }
