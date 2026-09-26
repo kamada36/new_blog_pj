@@ -46,6 +46,30 @@ export async function Sidebar() {
             <p className="font-display font-bold">{author.name}</p>
           </div>
           <p className="mt-3 line-clamp-4 text-sm text-foreground-muted">{author.bio}</p>
+          {(author.snsX || author.snsThreads) && (
+            <div className="mt-3 flex gap-2">
+              {author.snsX && (
+                <a
+                  href={author.snsX}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+                >
+                  X (Twitter)
+                </a>
+              )}
+              {author.snsThreads && (
+                <a
+                  href={author.snsThreads}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+                >
+                  Threads
+                </a>
+              )}
+            </div>
+          )}
           <Link href="/profile" className="mt-3 inline-block text-sm font-semibold text-accent-dark hover:underline">
             プロフィールを見る →
           </Link>
