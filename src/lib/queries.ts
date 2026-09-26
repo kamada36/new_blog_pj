@@ -133,13 +133,25 @@ export async function getArticleBySlug(slug: string) {
   });
 }
 
-export async function incrementArticleViewCount(id: string) {
+// 同一訪問者(IP+UAのハッシュ)による短時間の再読み込み・再訪問は
+// カウントしない。WordPressの主要な閲覧数計測プラグインも同様に
+// 「一定期間内は1visitorにつき1カウント」という重複排除を行っている。
+const VIEW_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24時間
+
+export async function recordArticleView(id: string, visitorHash: string) {
+  const since = new Date(Date.now() - VIEW_DEDUP_WINDOW_MS);
+  const recentDuplicate = await prisma.articleView.findFirst({
+    where: { articleId: id, visitorHash, createdAt: { gte: since } },
+    select: { id: true },
+  });
+  if (recentDuplicate) return;
+
   await prisma.$transaction([
     prisma.article.update({
       where: { id },
       data: { viewCount: { increment: 1 } },
     }),
-    prisma.articleView.create({ data: { articleId: id } }),
+    prisma.articleView.create({ data: { articleId: id, visitorHash } }),
   ]);
 }
 

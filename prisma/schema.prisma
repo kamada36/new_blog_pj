@@ -78,15 +78,18 @@ model Article {
   @@index([categoryId])
 }
 
-// 記事の閲覧ログ（本日/週間/月間の集計用）
+// 記事の閲覧ログ（本日/週間/月間の集計、および重複アクセスの除外用）
 model ArticleView {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  // IP+UAを一方向ハッシュ化した訪問者識別子（生IPは保存しない）
+  visitorHash String @default("")
 
   article   Article @relation(fields: [articleId], references: [id])
   articleId String
 
   @@index([articleId, createdAt])
+  @@index([articleId, visitorHash, createdAt])
 }
 
 // 固定ページ（プロフィール/サイト概要/プライバシーポリシー等）

@@ -12,8 +12,10 @@ import { ArticleCard } from "@/components/article/ArticleCard";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
-import { getArticleBySlug, getRelatedArticles, incrementArticleViewCount } from "@/lib/queries";
+import { getArticleBySlug, getRelatedArticles, recordArticleView } from "@/lib/queries";
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
+import { getSessionUser } from "@/lib/auth";
+import { getViewRequestContext } from "@/lib/analytics";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -44,7 +46,14 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
   const article = await getArticleBySlug(decodeURIComponent(slug));
   if (!article || article.status !== "published") notFound();
 
-  after(() => incrementArticleViewCount(article.id));
+  // 管理者自身の閲覧、bot/クローラー、短時間の重複アクセスはカウントしない
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    const { isBot, visitorHash } = await getViewRequestContext();
+    if (!isBot) {
+      after(() => recordArticleView(article.id, visitorHash));
+    }
+  }
 
   const toc = extractHeadings(article.contentMarkdown);
   const related = await getRelatedArticles(article, 4);
