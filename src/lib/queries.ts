@@ -134,10 +134,62 @@ export async function getArticleBySlug(slug: string) {
 }
 
 export async function incrementArticleViewCount(id: string) {
-  await prisma.article.update({
-    where: { id },
-    data: { viewCount: { increment: 1 } },
-  });
+  await prisma.$transaction([
+    prisma.article.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+    }),
+    prisma.articleView.create({ data: { articleId: id } }),
+  ]);
+}
+
+export type ArticleViewStats = {
+  today: number;
+  week: number;
+  month: number;
+  total: number;
+};
+
+export async function getArticleViewStatsMap(
+  articleIds: string[]
+): Promise<Map<string, ArticleViewStats>> {
+  const map = new Map<string, ArticleViewStats>();
+  if (articleIds.length === 0) return map;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const daysSinceMonday = (startOfToday.getDay() + 6) % 7;
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfToday.getDate() - daysSinceMonday);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [monthViews, articles] = await Promise.all([
+    prisma.articleView.findMany({
+      where: { articleId: { in: articleIds }, createdAt: { gte: startOfMonth } },
+      select: { articleId: true, createdAt: true },
+    }),
+    prisma.article.findMany({
+      where: { id: { in: articleIds } },
+      select: { id: true, viewCount: true },
+    }),
+  ]);
+
+  for (const id of articleIds) {
+    map.set(id, { today: 0, week: 0, month: 0, total: 0 });
+  }
+  for (const view of monthViews) {
+    const stats = map.get(view.articleId);
+    if (!stats) continue;
+    stats.month += 1;
+    if (view.createdAt >= startOfWeek) stats.week += 1;
+    if (view.createdAt >= startOfToday) stats.today += 1;
+  }
+  for (const article of articles) {
+    const stats = map.get(article.id);
+    if (stats) stats.total = article.viewCount;
+  }
+
+  return map;
 }
 
 export async function getRelatedArticles(article: { id: string; categoryId: string }, limit = 4) {

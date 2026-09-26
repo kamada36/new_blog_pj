@@ -12,6 +12,7 @@ import {
   getRecentArticles,
   getSiteSetting,
 } from "@/lib/queries";
+import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
 export default async function HomePage() {
   const [siteSetting, categories, recentArticles, popularArticles, author] = await Promise.all([
@@ -28,6 +29,12 @@ export default async function HomePage() {
       articles: await getArticlesByCategory(category.id, 4),
     }))
   );
+
+  const viewStatsMap = await getAdminViewStatsForArticles([
+    ...recentArticles,
+    ...categorySections.flatMap((section) => section.articles),
+    ...popularArticles,
+  ]);
 
   return (
     <div className="pb-20">
@@ -58,7 +65,7 @@ export default async function HomePage() {
           <SectionHeading title="新着記事" />
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {recentArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
+              <ArticleCard key={article.id} article={article} viewStats={viewStatsMap?.get(article.id) ?? null} />
             ))}
           </div>
         </Container>
@@ -74,7 +81,7 @@ export default async function HomePage() {
             />
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {section.articles.map((article) => (
-                <ArticleCard key={article.id} article={article} />
+                <ArticleCard key={article.id} article={article} viewStats={viewStatsMap?.get(article.id) ?? null} />
               ))}
             </div>
           </Container>
@@ -138,7 +145,7 @@ export default async function HomePage() {
           <SectionHeading title="人気記事" />
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {popularArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
+              <ArticleCard key={article.id} article={article} viewStats={viewStatsMap?.get(article.id) ?? null} />
             ))}
           </div>
         </Container>

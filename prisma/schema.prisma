@@ -72,9 +72,21 @@ model Article {
   authorId String
 
   tags Tag[]
+  views ArticleView[]
 
   @@index([status, publishedAt])
   @@index([categoryId])
+}
+
+// 記事の閲覧ログ（本日/週間/月間の集計用）
+model ArticleView {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  article   Article @relation(fields: [articleId], references: [id])
+  articleId String
+
+  @@index([articleId, createdAt])
 }
 
 // 固定ページ（プロフィール/サイト概要/プライバシーポリシー等）

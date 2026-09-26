@@ -13,6 +13,7 @@ import { IconMug } from "@/components/icons/CafeIcons";
 import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
 import { getArticleBySlug, getRelatedArticles, incrementArticleViewCount } from "@/lib/queries";
+import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -47,6 +48,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
 
   const toc = extractHeadings(article.contentMarkdown);
   const related = await getRelatedArticles(article, 4);
+  const relatedViewStatsMap = await getAdminViewStatsForArticles(related);
   const articleUrl = `${siteUrl}/articles/${article.slug}`;
 
   return (
@@ -140,7 +142,11 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
               <h2 className="border-b border-border pb-3 font-display text-lg font-black">関連記事</h2>
               <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {related.map((item) => (
-                  <ArticleCard key={item.id} article={item} />
+                  <ArticleCard
+                    key={item.id}
+                    article={item}
+                    viewStats={relatedViewStatsMap?.get(item.id) ?? null}
+                  />
                 ))}
               </div>
             </div>

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
-import { IconMug } from "@/components/icons/CafeIcons";
+import { IconMug, IconBarChart } from "@/components/icons/CafeIcons";
+import type { ArticleViewStats } from "@/lib/queries";
 
 export type ArticleCardData = {
   id: string;
@@ -13,7 +14,13 @@ export type ArticleCardData = {
   category: { id: string; name: string; slug: string };
 };
 
-export function ArticleCard({ article }: { article: ArticleCardData }) {
+export function ArticleCard({
+  article,
+  viewStats,
+}: {
+  article: ArticleCardData;
+  viewStats?: ArticleViewStats | null;
+}) {
   return (
     <Link
       href={`/articles/${article.slug}`}
@@ -43,6 +50,15 @@ export function ArticleCard({ article }: { article: ArticleCardData }) {
         </h3>
         <p className="line-clamp-2 text-sm text-foreground-muted">{article.excerpt}</p>
         <time className="mt-auto pt-2 text-xs text-foreground-muted">{formatDate(article.publishedAt)}</time>
+        {viewStats && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1 text-[11px] text-foreground-muted">
+            <IconBarChart className="h-3.5 w-3.5 shrink-0 text-accent" />
+            <span>本日: {viewStats.today}</span>
+            <span>週: {viewStats.week}</span>
+            <span>月: {viewStats.month}</span>
+            <span>全体: {viewStats.total}</span>
+          </div>
+        )}
       </div>
     </Link>
   );

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
@@ -54,7 +55,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   }
 }
 
-export async function getSessionUser() {
+export const getSessionUser = cache(async function getSessionUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -64,6 +65,6 @@ export async function getSessionUser() {
 
   const user = await prisma.user.findUnique({ where: { id: session.sub } });
   return user;
-}
+});
 
 export { SESSION_COOKIE };
