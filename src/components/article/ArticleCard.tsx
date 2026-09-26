@@ -26,30 +26,29 @@ export function ArticleCard({
       href={`/articles/${article.slug}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-shadow hover:shadow-lg"
     >
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-muted">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface-muted">
         {article.coverImageUrl ? (
           <Image
             src={article.coverImageUrl}
             alt={article.title}
             fill
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            sizes="(min-width: 1024px) 340px, 50vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <IconMug className="h-10 w-10 text-accent/50" />
+            <IconMug className="h-8 w-8 text-accent/50" />
           </div>
         )}
-        <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-contrast">
+        <span className="absolute left-2 top-2 rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-accent-contrast">
           {article.category.name}
         </span>
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 font-display text-base font-bold leading-snug group-hover:text-accent-dark">
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <h3 className="line-clamp-2 font-display text-sm font-bold leading-snug group-hover:text-accent-dark">
           {article.title}
         </h3>
-        <p className="line-clamp-2 text-sm text-foreground-muted">{article.excerpt}</p>
-        <time className="mt-auto pt-2 text-xs text-foreground-muted">{formatDate(article.publishedAt)}</time>
+        <time className="mt-auto pt-1 text-xs text-foreground-muted">{formatDate(article.publishedAt)}</time>
         {viewStats && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1 text-[11px] text-foreground-muted">
             <IconBarChart className="h-3.5 w-3.5 shrink-0 text-accent" />

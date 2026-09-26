@@ -33,7 +33,7 @@ export async function ArticleListingLayout({
           {articles.length === 0 ? (
             <p className="py-16 text-center text-sm text-foreground-muted">まだ記事がありません。</p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4">
               {articles.map((article) => (
                 <ArticleCard
                   key={article.id}

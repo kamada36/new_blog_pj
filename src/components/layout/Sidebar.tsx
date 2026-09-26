@@ -6,7 +6,9 @@ import {
   getPopularArticles,
   getPrimaryAuthor,
 } from "@/lib/queries";
-import { IconMug } from "@/components/icons/CafeIcons";
+import { getAdminViewStatsForArticles } from "@/lib/adminView";
+import { IconMug, IconCap } from "@/components/icons/CafeIcons";
+import { ArticleRowCard } from "@/components/article/ArticleRowCard";
 
 const MONTH_NAMES = [
   "1月", "2月", "3月", "4月", "5月", "6月",
@@ -20,6 +22,7 @@ export async function Sidebar() {
     getCategories(),
     getPrimaryAuthor(),
   ]);
+  const viewStatsMap = await getAdminViewStatsForArticles(popular);
 
   return (
     <aside className="flex flex-col gap-8">
@@ -49,41 +52,34 @@ export async function Sidebar() {
         </section>
       )}
 
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-sm font-bold text-foreground-muted">サイトの住人</h2>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+            <IconCap className="h-6 w-6 text-accent-dark" />
+          </div>
+          <p className="font-display font-bold">アイコ</p>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
+          プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。
+        </p>
+      </section>
+
       {popular.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-display text-sm font-bold text-foreground-muted">人気記事</h2>
-          <ol className="mt-3 flex flex-col gap-3">
-            {popular.map((article, index) => (
-              <li key={article.id}>
-                <Link href={`/articles/${article.slug}`} className="group flex items-start gap-3">
-                  <span className="font-display text-lg font-black text-accent-soft group-hover:text-accent">
-                    {index + 1}
-                  </span>
-                  <span className="line-clamp-2 text-sm font-medium group-hover:text-accent-dark">
-                    {article.title}
-                  </span>
-                </Link>
-              </li>
+          <div className="mt-3 flex flex-col gap-4">
+            {popular.map((article) => (
+              <ArticleRowCard
+                key={article.id}
+                article={article}
+                size="sm"
+                viewStats={viewStatsMap?.get(article.id) ?? null}
+              />
             ))}
-          </ol>
+          </div>
         </section>
       )}
-
-      <section className="rounded-2xl border border-border bg-surface p-5">
-        <h2 className="font-display text-sm font-bold text-foreground-muted">カテゴリー</h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {categories.map((category) => (
-            <li key={category.id}>
-              <Link
-                href={`/category/${category.slug}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted hover:text-accent-dark"
-              >
-                {category.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       {archive.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
@@ -105,6 +101,22 @@ export async function Sidebar() {
           </ul>
         </section>
       )}
+
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-sm font-bold text-foreground-muted">カテゴリー</h2>
+        <ul className="mt-3 flex flex-col gap-2">
+          {categories.map((category) => (
+            <li key={category.id}>
+              <Link
+                href={`/category/${category.slug}`}
+                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted hover:text-accent-dark"
+              >
+                {category.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </aside>
   );
 }

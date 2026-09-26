@@ -100,3 +100,13 @@ export function IconBarChart({ className }: IconProps) {
     </svg>
   );
 }
+
+export function IconCap({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M12 4 2 9l10 5 10-5-10-5Z" />
+      <path d="M6 11.5V16c0 1.5 2.5 3 6 3s6-1.5 6-3v-4.5" />
+      <path d="M21 9v5.5" />
+    </svg>
+  );
+}

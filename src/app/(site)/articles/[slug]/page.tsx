@@ -140,7 +140,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
           {related.length > 0 && (
             <div className="mt-12">
               <h2 className="border-b border-border pb-3 font-display text-lg font-black">関連記事</h2>
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-4">
                 {related.map((item) => (
                   <ArticleCard
                     key={item.id}

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/layout/Container";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { CategoryTiles } from "@/components/home/CategoryTiles";
 import { ArticleCard } from "@/components/article/ArticleCard";
+import { ArticleRowCard } from "@/components/article/ArticleRowCard";
 import { IconMug } from "@/components/icons/CafeIcons";
 import {
   getArticlesByCategory,
@@ -60,96 +62,118 @@ export default async function HomePage() {
         <CategoryTiles categories={categories} />
       </Container>
 
-      {recentArticles.length > 0 && (
-        <Container className="mt-16">
-          <SectionHeading title="新着記事" />
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {recentArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} viewStats={viewStatsMap?.get(article.id) ?? null} />
-            ))}
-          </div>
-        </Container>
-      )}
-
-      {categorySections
-        .filter((section) => section.articles.length > 0)
-        .map((section) => (
-          <Container key={section.category.id} className="mt-16">
-            <SectionHeading
-              title={section.category.name}
-              href={`/category/${section.category.slug}`}
-            />
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {section.articles.map((article) => (
-                <ArticleCard key={article.id} article={article} viewStats={viewStatsMap?.get(article.id) ?? null} />
-              ))}
-            </div>
-          </Container>
-        ))}
-
-      {author && (
-        <Container className="mt-20">
-          <div className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-surface p-8 text-center sm:flex-row sm:text-left">
-            {author.avatarUrl ? (
-              <Image
-                src={author.avatarUrl}
-                alt={author.name}
-                width={112}
-                height={112}
-                className="h-28 w-28 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-                <IconMug className="h-10 w-10 text-accent-dark" />
-              </div>
+      <Container className="mt-16">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_300px]">
+          <div>
+            {recentArticles.length > 0 && (
+              <section>
+                <SectionHeading title="新着記事" />
+                <div className="mt-6 grid grid-cols-2 gap-4">
+                  {recentArticles.map((article) => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      viewStats={viewStatsMap?.get(article.id) ?? null}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
-            <div>
-              <p className="font-display text-sm font-bold text-foreground-muted">管理人プロフィール</p>
-              <h2 className="mt-1 font-display text-xl font-black">{author.name}</h2>
-              <p className="mt-3 text-sm leading-relaxed text-foreground-muted">{author.bio}</p>
-              <div className="mt-4 flex justify-center gap-3 sm:justify-start">
-                {author.snsX && (
-                  <a
-                    href={author.snsX}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold hover:border-accent hover:text-accent-dark"
-                  >
-                    X (Twitter)
-                  </a>
-                )}
-                {author.snsThreads && (
-                  <a
-                    href={author.snsThreads}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold hover:border-accent hover:text-accent-dark"
-                  >
-                    Threads
-                  </a>
-                )}
-                <Link
-                  href="/profile"
-                  className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-accent-contrast hover:bg-accent-dark"
-                >
-                  詳しいプロフィール
-                </Link>
-              </div>
-            </div>
-          </div>
-        </Container>
-      )}
 
-      {popularArticles.length > 0 && (
-        <Container className="mt-16">
-          <SectionHeading title="人気記事" />
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {popularArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} viewStats={viewStatsMap?.get(article.id) ?? null} />
-            ))}
+            {categorySections
+              .filter((section) => section.articles.length > 0)
+              .map((section) => (
+                <section key={section.category.id} className="mt-14">
+                  <SectionHeading
+                    title={section.category.name}
+                    href={`/category/${section.category.slug}`}
+                  />
+                  <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5">
+                    {section.articles.map((article) => (
+                      <ArticleRowCard
+                        key={article.id}
+                        article={article}
+                        size="md"
+                        viewStats={viewStatsMap?.get(article.id) ?? null}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+
+            {author && (
+              <section className="mt-16">
+                <div className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-surface p-8 text-center sm:flex-row sm:text-left">
+                  {author.avatarUrl ? (
+                    <Image
+                      src={author.avatarUrl}
+                      alt={author.name}
+                      width={112}
+                      height={112}
+                      className="h-28 w-28 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+                      <IconMug className="h-10 w-10 text-accent-dark" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-display text-sm font-bold text-foreground-muted">管理人プロフィール</p>
+                    <h2 className="mt-1 font-display text-xl font-black">{author.name}</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-foreground-muted">{author.bio}</p>
+                    <div className="mt-4 flex justify-center gap-3 sm:justify-start">
+                      {author.snsX && (
+                        <a
+                          href={author.snsX}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+                        >
+                          X (Twitter)
+                        </a>
+                      )}
+                      {author.snsThreads && (
+                        <a
+                          href={author.snsThreads}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+                        >
+                          Threads
+                        </a>
+                      )}
+                      <Link
+                        href="/profile"
+                        className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-accent-contrast hover:bg-accent-dark"
+                      >
+                        詳しいプロフィール
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {popularArticles.length > 0 && (
+              <section className="mt-16">
+                <SectionHeading title="人気記事" />
+                <div className="mt-6 flex flex-col gap-4">
+                  {popularArticles.map((article) => (
+                    <ArticleRowCard
+                      key={article.id}
+                      article={article}
+                      size="md"
+                      viewStats={viewStatsMap?.get(article.id) ?? null}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
-        </Container>
-      )}
+
+          <Sidebar />
+        </div>
+      </Container>
     </div>
   );
 }
