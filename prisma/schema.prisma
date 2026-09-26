@@ -33,6 +33,11 @@ model SiteSetting {
   // 表示側で一切のリサイズ・加工をしない(規約上、改変不可のため)。
   sponsorSidebarEmbed String @default("") // ウィジェット枠(正方形〜縦長長方形の広告を想定)
   sponsorFooterEmbed  String @default("") // フッター上部(横長バナー広告を想定)
+
+  // トップページ見出し(ヒーローセクション)の画像
+  heroBackgroundUrl         String? // 背景画像
+  heroCharacterResilientUrl String? // キャラクター「レジサン」
+  heroCharacterAikoUrl      String? // キャラクター「アイコ」
 }
 
 model Category {

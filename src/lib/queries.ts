@@ -29,6 +29,9 @@ export async function getSiteSetting() {
       footerCopyright: "Resilient-cer Cafe",
       sponsorSidebarEmbed: "",
       sponsorFooterEmbed: "",
+      heroBackgroundUrl: null,
+      heroCharacterResilientUrl: null,
+      heroCharacterAikoUrl: null,
     }
   );
 }

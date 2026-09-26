@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Zen_Kaku_Gothic_New, Noto_Sans_JP } from "next/font/google";
+import { Zen_Kaku_Gothic_New, Noto_Sans_JP, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 
 const bodyFont = Noto_Sans_JP({
@@ -12,6 +12,13 @@ const displayFont = Zen_Kaku_Gothic_New({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "700", "900"],
+});
+
+const brandFont = Cormorant_Garamond({
+  variable: "--font-brand",
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  style: ["italic", "normal"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -27,7 +34,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ja" className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}>
+    <html
+      lang="ja"
+      className={`${bodyFont.variable} ${displayFont.variable} ${brandFont.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>
   );

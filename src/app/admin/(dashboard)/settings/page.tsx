@@ -1,5 +1,6 @@
+import Image from "next/image";
 import { getSiteSetting } from "@/lib/queries";
-import { updateSiteSetting, updateSponsorSlots } from "./actions";
+import { updateSiteSetting, updateSponsorSlots, updateHeroAssets } from "./actions";
 
 export default async function AdminSettingsPage({ searchParams }: PageProps<"/admin/settings">) {
   const { status, error } = await searchParams;
@@ -104,6 +105,81 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
             広告タグを保存する
           </button>
         </form>
+      </div>
+
+      <div className="mt-10 max-w-lg rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-base font-bold">トップページ見出し（ヒーローセクション）</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          背景画像とキャラクター2人の画像を設定できます。未設定の項目は表示されません。
+        </p>
+
+        <form action={updateHeroAssets} encType="multipart/form-data" className="mt-4 flex flex-col gap-5">
+          <HeroImageField
+            name="heroBackground"
+            label="背景画像"
+            hint="見出しセクション全体に敷く横長の画像を想定しています。"
+            currentUrl={setting.heroBackgroundUrl}
+          />
+          <HeroImageField
+            name="heroCharacterResilient"
+            label="キャラクター「レジサン」"
+            hint="背景の透過PNGを想定しています。見出しの左側に表示されます。"
+            currentUrl={setting.heroCharacterResilientUrl}
+          />
+          <HeroImageField
+            name="heroCharacterAiko"
+            label="キャラクター「アイコ」"
+            hint="背景の透過PNGを想定しています。見出しの右側に表示されます。"
+            currentUrl={setting.heroCharacterAikoUrl}
+          />
+
+          <button
+            type="submit"
+            className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+          >
+            画像を保存する
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function HeroImageField({
+  name,
+  label,
+  hint,
+  currentUrl,
+}: {
+  name: string;
+  label: string;
+  hint: string;
+  currentUrl: string | null;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-semibold">{label}</label>
+      <p className="mt-0.5 text-xs text-foreground-muted">{hint}</p>
+      <div className="mt-2 flex items-center gap-3">
+        {currentUrl ? (
+          <Image
+            src={currentUrl}
+            alt={label}
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-lg border border-border object-contain bg-surface-muted"
+          />
+        ) : (
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-[10px] text-foreground-muted">
+            未設定
+          </div>
+        )}
+        <input
+          type="file"
+          name={name}
+          accept="image/*"
+          className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-xs"
+        />
       </div>
     </div>
   );
