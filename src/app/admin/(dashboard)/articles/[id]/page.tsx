@@ -28,7 +28,7 @@ export default async function EditArticlePage({ params }: PageProps<"/admin/arti
             contentMarkdown: article.contentMarkdown,
             categoryId: article.categoryId,
             tagIds: article.tags.map((tag) => tag.id),
-            status: article.status as "draft" | "published",
+            status: article.status as "draft" | "published" | "private",
             coverImageUrl: article.coverImageUrl,
             metaTitle: article.metaTitle,
             metaDescription: article.metaDescription,

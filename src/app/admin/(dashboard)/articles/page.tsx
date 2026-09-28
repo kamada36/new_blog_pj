@@ -4,6 +4,12 @@ import { formatDate } from "@/lib/format";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
 import { deleteArticle } from "./actions";
 
+const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+  published: { label: "公開中", className: "bg-accent-soft text-accent-dark" },
+  private: { label: "非公開", className: "bg-red-50 text-red-600" },
+  draft: { label: "下書き", className: "bg-surface-muted text-foreground-muted" },
+};
+
 export default async function AdminArticlesPage() {
   const articles = await prisma.article.findMany({
     orderBy: { createdAt: "desc" },
@@ -42,12 +48,10 @@ export default async function AdminArticlesPage() {
                 <td className="px-4 py-3">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      article.status === "published"
-                        ? "bg-accent-soft text-accent-dark"
-                        : "bg-surface-muted text-foreground-muted"
+                      (STATUS_BADGES[article.status] ?? STATUS_BADGES.draft).className
                     }`}
                   >
-                    {article.status === "published" ? "公開中" : "下書き"}
+                    {(STATUS_BADGES[article.status] ?? STATUS_BADGES.draft).label}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-foreground-muted">{article.viewCount}</td>

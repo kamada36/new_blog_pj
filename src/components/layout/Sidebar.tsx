@@ -36,7 +36,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
       {author && (
         <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-display text-sm font-bold text-foreground-muted">管理人プロフィール</h2>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex flex-col items-center gap-2 text-center">
             {author.avatarUrl ? (
               <Image
                 src={author.avatarUrl}
@@ -52,9 +52,9 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
             )}
             <p className="font-display font-bold">{author.name}</p>
           </div>
-          <p className="mt-3 line-clamp-4 text-sm text-foreground-muted">{author.bio}</p>
+          <p className="mt-3 line-clamp-4 text-center text-sm text-foreground-muted">{author.bio}</p>
           {(author.snsX || author.snsThreads) && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex justify-center gap-2">
               {author.snsX && (
                 <a
                   href={author.snsX}
@@ -77,7 +77,10 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
               )}
             </div>
           )}
-          <Link href="/profile" className="mt-3 inline-block text-sm font-semibold text-accent-dark hover:underline">
+          <Link
+            href="/profile"
+            className="mt-3 block text-center text-sm font-semibold text-accent-dark hover:underline"
+          >
             プロフィールを見る →
           </Link>
         </section>
@@ -85,13 +88,13 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
 
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="font-display text-sm font-bold text-foreground-muted">サイトの住人</h2>
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex flex-col items-center gap-2 text-center">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
             <IconCap className="h-6 w-6 text-accent-dark" />
           </div>
           <p className="font-display font-bold">アイコ</p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
+        <p className="mt-3 text-center text-sm leading-relaxed text-foreground-muted">
           プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。
         </p>
       </section>
