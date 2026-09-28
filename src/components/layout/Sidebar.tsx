@@ -10,14 +10,16 @@ import {
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { IconMug, IconCap } from "@/components/icons/CafeIcons";
 import { ArticleRowCard } from "@/components/article/ArticleRowCard";
+import { ArticleTocWidget } from "@/components/article/ArticleTocWidget";
 import { SponsorEmbed } from "@/components/layout/SponsorEmbed";
+import type { TocItem } from "@/lib/toc";
 
 const MONTH_NAMES = [
   "1月", "2月", "3月", "4月", "5月", "6月",
   "7月", "8月", "9月", "10月", "11月", "12月",
 ];
 
-export async function Sidebar() {
+export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
   const [popular, archive, categories, author, siteSetting] = await Promise.all([
     getPopularArticles(5),
     getArchiveMonths(),
@@ -26,6 +28,8 @@ export async function Sidebar() {
     getSiteSetting(),
   ]);
   const viewStatsMap = await getAdminViewStatsForArticles(popular);
+  const toc = articleToc ?? [];
+  const hasStickyToc = toc.length > 0;
 
   return (
     <aside className="flex flex-col gap-8">
@@ -92,7 +96,7 @@ export async function Sidebar() {
         </p>
       </section>
 
-      {siteSetting.sponsorSidebarEmbed && (
+      {!hasStickyToc && siteSetting.sponsorSidebarEmbed && (
         <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-display text-sm font-bold text-foreground-muted">スポンサーリンク</h2>
           <div className="mt-3 flex justify-center">
@@ -115,6 +119,22 @@ export async function Sidebar() {
             ))}
           </div>
         </section>
+      )}
+
+      {hasStickyToc && (
+        <div className="lg:flex-1">
+          <div className="flex flex-col gap-4 lg:sticky lg:top-24">
+            {siteSetting.sponsorSidebarEmbed && (
+              <section className="rounded-2xl border border-border bg-surface p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">広告</p>
+                <div className="mt-2 flex justify-center">
+                  <SponsorEmbed html={siteSetting.sponsorSidebarEmbed} />
+                </div>
+              </section>
+            )}
+            <ArticleTocWidget items={toc} />
+          </div>
+        </div>
       )}
 
       {archive.length > 0 && (

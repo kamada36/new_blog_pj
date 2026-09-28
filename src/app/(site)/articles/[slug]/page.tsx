@@ -162,7 +162,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
           )}
         </article>
 
-        <Sidebar />
+        <Sidebar articleToc={toc} />
       </div>
     </Container>
   );
