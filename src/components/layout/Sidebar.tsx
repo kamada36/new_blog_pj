@@ -96,7 +96,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
         </p>
       </section>
 
-      {!hasStickyToc && siteSetting.sponsorSidebarEmbed && (
+      {siteSetting.sponsorSidebarEmbed && (
         <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-display text-sm font-bold text-foreground-muted">スポンサーリンク</h2>
           <div className="mt-3 flex justify-center">
@@ -124,11 +124,11 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
       {hasStickyToc && (
         <div className="lg:flex-1">
           <div className="flex flex-col gap-4 lg:sticky lg:top-24">
-            {siteSetting.sponsorSidebarEmbed && (
+            {siteSetting.sponsorSidebarCompactEmbed && (
               <section className="rounded-2xl border border-border bg-surface p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">広告</p>
                 <div className="mt-2 flex justify-center">
-                  <SponsorEmbed html={siteSetting.sponsorSidebarEmbed} />
+                  <SponsorEmbed html={siteSetting.sponsorSidebarCompactEmbed} />
                 </div>
               </section>
             )}

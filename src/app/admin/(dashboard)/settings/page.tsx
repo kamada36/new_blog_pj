@@ -84,6 +84,21 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           </div>
 
           <div>
+            <label className="text-sm font-semibold">ウィジェット枠（記事詳細・目次上部/小型）</label>
+            <p className="mt-0.5 text-xs text-foreground-muted">
+              設置可能サイズの目安: 横長の小型バナー（300×60 / 320×50 など、高さ60px程度まで）。
+              記事詳細ページで目次と一緒に追従表示されるため、高さを抑えた広告タグを選んでください。
+            </p>
+            <textarea
+              name="sponsorSidebarCompactEmbed"
+              defaultValue={setting.sponsorSidebarCompactEmbed}
+              rows={5}
+              placeholder="<a href=... ><img src=... /></a> のような広告タグをそのまま貼り付け"
+              className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
             <label className="text-sm font-semibold">フッター上部（全ページ共通）</label>
             <p className="mt-0.5 text-xs text-foreground-muted">
               設置可能サイズの目安: 横長バナー（728×90 / 468×60 / 320×50
