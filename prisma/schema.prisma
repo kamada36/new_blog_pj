@@ -31,8 +31,9 @@ model SiteSetting {
 
   // スポンサーリンク(アフィリエイト広告)の埋め込みHTML。ASPが発行するコードをそのまま保存し、
   // 表示側で一切のリサイズ・加工をしない(規約上、改変不可のため)。
-  sponsorSidebarEmbed String @default("") // ウィジェット枠(正方形〜縦長長方形の広告を想定)
-  sponsorFooterEmbed  String @default("") // フッター上部(横長バナー広告を想定)
+  sponsorSidebarEmbed        String @default("") // ウィジェット枠(正方形〜縦長長方形の広告を想定)
+  sponsorSidebarCompactEmbed String @default("") // ウィジェット枠・目次上部(高さ60px程度の小型バナーを想定)
+  sponsorFooterEmbed         String @default("") // フッター上部(横長バナー広告を想定)
 
   // トップページ見出し(ヒーローセクション)の画像
   heroBackgroundUrl         String? // 背景画像

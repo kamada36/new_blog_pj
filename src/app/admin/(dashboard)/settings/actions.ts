@@ -36,12 +36,14 @@ export async function updateSiteSetting(formData: FormData) {
 
 const sponsorSlotsSchema = z.object({
   sponsorSidebarEmbed: z.string().trim().max(5000),
+  sponsorSidebarCompactEmbed: z.string().trim().max(5000),
   sponsorFooterEmbed: z.string().trim().max(5000),
 });
 
 export async function updateSponsorSlots(formData: FormData) {
   const parsed = sponsorSlotsSchema.safeParse({
     sponsorSidebarEmbed: formData.get("sponsorSidebarEmbed") ?? "",
+    sponsorSidebarCompactEmbed: formData.get("sponsorSidebarCompactEmbed") ?? "",
     sponsorFooterEmbed: formData.get("sponsorFooterEmbed") ?? "",
   });
 

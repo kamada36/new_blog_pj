@@ -35,6 +35,7 @@ export const getSiteSetting = cache(async function getSiteSetting() {
       tagline: "YOUR RESILIENCE MATTERS!",
       footerCopyright: "Resilient-cer Cafe",
       sponsorSidebarEmbed: "",
+      sponsorSidebarCompactEmbed: "",
       sponsorFooterEmbed: "",
       heroBackgroundUrl: null,
       heroCharacterResilientUrl: null,
