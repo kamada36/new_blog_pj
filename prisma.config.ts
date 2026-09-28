@@ -10,6 +10,9 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Netlify FunctionsはサーバーレスのためCLI(migrate/db seed)はSupabaseの
+    // 直接接続(DIRECT_URL)を使う。アプリ実行時の接続はsrc/lib/prisma.tsで
+    // DATABASE_URL(Transaction Pooler)を直接参照している。
+    url: process.env["DIRECT_URL"],
   },
 });

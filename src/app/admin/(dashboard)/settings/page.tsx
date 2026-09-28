@@ -113,7 +113,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           背景画像とキャラクター2人の画像を設定できます。未設定の項目は表示されません。
         </p>
 
-        <form action={updateHeroAssets} encType="multipart/form-data" className="mt-4 flex flex-col gap-5">
+        <form action={updateHeroAssets} className="mt-4 flex flex-col gap-5">
           <HeroImageField
             name="heroBackground"
             label="背景画像"

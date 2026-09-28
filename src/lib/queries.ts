@@ -4,10 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 12;
 
-const publishedWhere = {
-  status: "published",
-  publishedAt: { lte: new Date() },
-} as const;
+// 関数化せずモジュール定数のままだと new Date() がサーバー起動時に1回だけ
+// 評価され固定されてしまい、以後公開した記事が一覧に出てこなくなるため関数にする。
+function publishedWhere() {
+  return {
+    status: "published",
+    publishedAt: { lte: new Date() },
+  } as const;
+}
 
 const cardSelect = {
   id: true,
@@ -57,7 +61,7 @@ export async function getTagBySlug(slug: string) {
 
 export async function getRecentArticles(limit = 4) {
   return prisma.article.findMany({
-    where: publishedWhere,
+    where: publishedWhere(),
     orderBy: { publishedAt: "desc" },
     take: limit,
     select: cardSelect,
@@ -66,7 +70,7 @@ export async function getRecentArticles(limit = 4) {
 
 export async function getArticlesByCategory(categoryId: string, limit = 4) {
   return prisma.article.findMany({
-    where: { ...publishedWhere, categoryId },
+    where: { ...publishedWhere(), categoryId },
     orderBy: { publishedAt: "desc" },
     take: limit,
     select: cardSelect,
@@ -75,7 +79,7 @@ export async function getArticlesByCategory(categoryId: string, limit = 4) {
 
 export const getPopularArticles = cache(async function getPopularArticles(limit = 5) {
   return prisma.article.findMany({
-    where: publishedWhere,
+    where: publishedWhere(),
     orderBy: { viewCount: "desc" },
     take: limit,
     select: cardSelect,
@@ -84,7 +88,7 @@ export const getPopularArticles = cache(async function getPopularArticles(limit 
 
 export const getArchiveMonths = cache(async function getArchiveMonths() {
   const articles = await prisma.article.findMany({
-    where: publishedWhere,
+    where: publishedWhere(),
     select: { publishedAt: true },
   });
   const counts = new Map<string, { year: number; month: number; count: number }>();
@@ -108,7 +112,7 @@ export async function getArticlesPage(params: {
   page: number;
 }) {
   const page = Math.max(1, params.page);
-  const where = { ...publishedWhere, ...params.where };
+  const where = { ...publishedWhere(), ...params.where };
 
   const [items, total] = await Promise.all([
     prisma.article.findMany({
@@ -215,7 +219,7 @@ export async function getArticleViewStatsMap(
 export async function getRelatedArticles(article: { id: string; categoryId: string }, limit = 4) {
   return prisma.article.findMany({
     where: {
-      ...publishedWhere,
+      ...publishedWhere(),
       categoryId: article.categoryId,
       id: { not: article.id },
     },

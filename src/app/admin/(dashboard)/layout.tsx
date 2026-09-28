@@ -17,7 +17,10 @@ const NAV_ITEMS = [
 export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) {
-    redirect("/admin/login");
+    // 署名は有効だがDBにユーザーが存在しない(旧DBのセッション等)場合、
+    // ここでは単に/admin/loginへ送るとproxy.tsに「ログイン済み」と判定されて
+    // /adminへ送り返され無限ループになる。Cookie自体を破棄するRoute Handler経由にする。
+    redirect("/admin/session-expired");
   }
 
   async function logoutAction() {

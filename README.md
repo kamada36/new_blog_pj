@@ -1,21 +1,27 @@
 # レジリエンサーCafe (Next.js版)
 
-WordPressで運用されていたブログサイトを Next.js (App Router) で再構築したものです。記事・カテゴリー・タグ・固定ページ・サイト設定はすべてDB（開発時はSQLite）で管理し、管理画面から編集します。
+WordPressで運用されていたブログサイトを Next.js (App Router) で再構築したものです。記事・カテゴリー・タグ・固定ページ・サイト設定はすべてDB（Supabase Postgres）で管理し、管理画面から編集します。
 
 ## 技術スタック
 
 - Next.js 16 (App Router) / React 19 / TypeScript
 - Tailwind CSS v4
-- Prisma 7 + SQLite（`@prisma/adapter-better-sqlite3`）
+- Prisma 7 + Supabase Postgres（`@prisma/adapter-pg`）
 - 自前実装の単一管理者ログイン（bcryptjs + jose製JWTセッションCookie）
 - Markdown記事編集: `@uiw/react-codemirror` + `react-markdown`
 
 ## セットアップ
 
+1. [Supabase](https://supabase.com/)でプロジェクトを作成する。
+2. プロジェクトのトップページ上部にある「Connect」ボタンから接続文字列を2種類取得する。
+   - Transaction Pooler（6543番ポート、`?pgbouncer=true`付き）→ `DATABASE_URL`
+   - Session Pooler または Direct connection（5432番ポート）→ `DIRECT_URL`
+3. 以下を実行する。
+
 ```bash
 npm install
-cp .env.example .env   # AUTH_SECRET を生成して設定してください
-npx prisma migrate dev
+cp .env.example .env   # DATABASE_URL / DIRECT_URL / AUTH_SECRET を設定してください
+npx prisma migrate dev --name init
 npx prisma db seed
 npm run dev
 ```
@@ -41,9 +47,6 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## 既知の制約（本番デプロイ時の注意）
 
-開発時はSQLite（`dev.db`）とアップロード画像のローカル保存（`public/uploads`）を使用しています。Vercelなどのサーバーレス環境ではファイルシステムが永続化されないため、本番運用の際は以下への切り替えが必要です。
-
-- DB: `prisma/schema.prisma` の `datasource` と `DATABASE_URL` をPostgres等に変更
-- 画像保存: `src/lib/storage.ts` の実装をS3/Vercel Blob等に差し替え
+アップロード画像はローカル保存（`public/uploads`）のままです。Netlify/Vercelなどのサーバーレス環境ではファイルシステムが永続化されないため、本番運用の際は `src/lib/storage.ts` の実装をS3/Supabase Storage等に差し替える必要があります。
 
 呼び出し側（記事保存処理など）は `saveUploadedFile()` の戻り値（公開URL）にのみ依存しているため、上記の切り替えは `storage.ts` の中身を差し替えるだけで完結する設計にしています。
