@@ -13,7 +13,7 @@ WordPressで運用されていたブログサイトを Next.js (App Router) で�
 ## セットアップ
 
 1. [Supabase](https://supabase.com/)でプロジェクトを作成する。
-2. プロジェクト設定 > Database > Connect から接続文字列を2種類取得する。
+2. プロジェクトのトップページ上部にある「Connect」ボタンから接続文字列を2種類取得する。
    - Transaction Pooler（6543番ポート、`?pgbouncer=true`付き）→ `DATABASE_URL`
    - Session Pooler または Direct connection（5432番ポート）→ `DIRECT_URL`
 3. 以下を実行する。
