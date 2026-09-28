@@ -20,7 +20,7 @@ const articleSchema = z.object({
   contentMarkdown: z.string().min(1, "本文を入力してください"),
   categoryId: z.string().min(1, "カテゴリーを選択してください"),
   tagIds: z.array(z.string()).default([]),
-  status: z.enum(["draft", "published"]),
+  status: z.enum(["draft", "published", "private"]),
   metaTitle: z.string().trim().max(200).optional().default(""),
   metaDescription: z.string().trim().max(300).optional().default(""),
   metaKeywords: z.string().trim().max(300).optional().default(""),

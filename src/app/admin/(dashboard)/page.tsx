@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 
 export default async function AdminDashboardPage() {
-  const [publishedCount, draftCount, totalViewsAgg, latestMessages] = await Promise.all([
+  const [publishedCount, draftCount, privateCount, totalViewsAgg, latestMessages] = await Promise.all([
     prisma.article.count({ where: { status: "published" } }),
     prisma.article.count({ where: { status: "draft" } }),
+    prisma.article.count({ where: { status: "private" } }),
     prisma.article.aggregate({ _sum: { viewCount: true } }),
     prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
   ]);
@@ -13,6 +14,7 @@ export default async function AdminDashboardPage() {
   const stats = [
     { label: "公開中の記事", value: publishedCount },
     { label: "下書き", value: draftCount },
+    { label: "非公開", value: privateCount },
     { label: "累計閲覧数", value: totalViewsAgg._sum.viewCount ?? 0 },
   ];
 
@@ -20,7 +22,7 @@ export default async function AdminDashboardPage() {
     <div>
       <h1 className="font-display text-xl font-black">ダッシュボード</h1>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-2xl border border-border bg-surface p-5">
             <p className="text-xs font-semibold text-foreground-muted">{stat.label}</p>

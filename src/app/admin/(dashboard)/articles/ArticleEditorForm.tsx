@@ -20,7 +20,7 @@ export type ArticleInitialValues = {
   contentMarkdown: string;
   categoryId: string;
   tagIds: string[];
-  status: "draft" | "published";
+  status: "draft" | "published" | "private";
   coverImageUrl: string | null;
   metaTitle: string;
   metaDescription: string;
@@ -130,6 +130,7 @@ export function ArticleEditorForm({
           >
             <option value="draft">下書き</option>
             <option value="published">公開</option>
+            <option value="private">非公開</option>
           </select>
         </div>
 

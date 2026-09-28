@@ -67,7 +67,7 @@ model Article {
   excerpt         String    @default("")
   contentMarkdown String
   coverImageUrl   String?
-  status          String    @default("draft") // "draft" | "published"
+  status          String    @default("draft") // "draft" | "published" | "private"
   publishedAt     DateTime?
   viewCount       Int       @default(0)
   metaTitle       String    @default("")
