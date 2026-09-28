@@ -128,8 +128,8 @@ export function ArticleEditorForm({
             defaultValue={values.status}
             className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           >
-            <option value="draft">下書き</option>
             <option value="published">公開</option>
+            <option value="draft">下書き</option>
             <option value="private">非公開</option>
           </select>
         </div>
