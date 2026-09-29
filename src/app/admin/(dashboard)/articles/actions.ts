@@ -116,3 +116,28 @@ export async function deleteArticle(id: string) {
   revalidatePath("/");
   revalidatePath("/admin/articles");
 }
+
+export async function bulkDeleteArticles(ids: string[]) {
+  const author = await getSessionUser();
+  if (!author || ids.length === 0) return;
+
+  await prisma.article.deleteMany({ where: { id: { in: ids } } });
+  revalidatePath("/");
+  revalidatePath("/admin/articles");
+}
+
+export async function bulkUpdateArticleStatus(ids: string[], status: "draft" | "published" | "private") {
+  const author = await getSessionUser();
+  if (!author || ids.length === 0) return;
+
+  await prisma.article.updateMany({ where: { id: { in: ids } }, data: { status } });
+  if (status === "published") {
+    // 初めて公開する記事のみ公開日時を発行する(既に公開済みだった記事の日時は変えない)。
+    await prisma.article.updateMany({
+      where: { id: { in: ids }, publishedAt: null },
+      data: { publishedAt: new Date() },
+    });
+  }
+  revalidatePath("/");
+  revalidatePath("/admin/articles");
+}

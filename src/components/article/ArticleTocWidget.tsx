@@ -26,11 +26,11 @@ export function ArticleTocWidget({ items }: { items: TocItem[] }) {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between"
+        className="relative flex w-full items-center justify-center"
       >
-        <span className="font-display text-sm font-bold text-foreground-muted">目次</span>
+        <span className="font-display text-center text-base font-bold text-foreground-muted">目次</span>
         <FaChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-foreground-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`absolute right-0 h-3.5 w-3.5 shrink-0 text-foreground-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
       {open && (
