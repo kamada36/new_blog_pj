@@ -35,7 +35,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
     <aside className="flex flex-col gap-8">
       {author && (
         <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="font-display text-sm font-bold text-foreground-muted">管理人プロフィール</h2>
+          <h2 className="font-display text-center text-base font-bold text-foreground-muted">管理人プロフィール</h2>
           <div className="mt-3 flex flex-col items-center gap-2 text-center">
             {author.avatarUrl ? (
               <Image
@@ -87,7 +87,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
       )}
 
       <section className="rounded-2xl border border-border bg-surface p-5">
-        <h2 className="font-display text-sm font-bold text-foreground-muted">サイトの住人</h2>
+        <h2 className="font-display text-center text-base font-bold text-foreground-muted">サイトの住人</h2>
         <div className="mt-3 flex flex-col items-center gap-2 text-center">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
             <IconCap className="h-6 w-6 text-accent-dark" />
@@ -101,7 +101,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
 
       {siteSetting.sponsorSidebarEmbed && (
         <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="font-display text-sm font-bold text-foreground-muted">スポンサーリンク</h2>
+          <h2 className="font-display text-center text-base font-bold text-foreground-muted">スポンサーリンク</h2>
           <div className="mt-3 flex justify-center">
             <SponsorEmbed html={siteSetting.sponsorSidebarEmbed} />
           </div>
@@ -110,7 +110,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
 
       {popular.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="font-display text-sm font-bold text-foreground-muted">人気記事</h2>
+          <h2 className="font-display text-center text-base font-bold text-foreground-muted">人気記事</h2>
           <div className="mt-3 flex flex-col gap-4">
             {popular.map((article) => (
               <ArticleRowCard
@@ -142,7 +142,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
 
       {archive.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="font-display text-sm font-bold text-foreground-muted">アーカイブ</h2>
+          <h2 className="font-display text-center text-base font-bold text-foreground-muted">アーカイブ</h2>
           <ul className="mt-3 flex flex-col gap-2">
             {archive.map((entry) => (
               <li key={`${entry.year}-${entry.month}`}>
@@ -162,7 +162,7 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
       )}
 
       <section className="rounded-2xl border border-border bg-surface p-5">
-        <h2 className="font-display text-sm font-bold text-foreground-muted">カテゴリー</h2>
+        <h2 className="font-display text-center text-base font-bold text-foreground-muted">カテゴリー</h2>
         <ul className="mt-3 flex flex-col gap-2">
           {categories.map((category) => (
             <li key={category.id}>
