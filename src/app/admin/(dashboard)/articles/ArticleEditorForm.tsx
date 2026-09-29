@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Image from "next/image";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
+import { EditorView } from "@codemirror/view";
 import { saveArticle, type ArticleFormState } from "./actions";
 import { slugify } from "@/lib/slug";
 import { TagAutocompleteInput } from "@/components/admin/TagAutocompleteInput";
@@ -58,9 +59,12 @@ export function ArticleEditorForm({
   const [slugTouched, setSlugTouched] = useState(Boolean(values.slug));
   const [content, setContent] = useState(values.contentMarkdown);
   const [coverPreview, setCoverPreview] = useState<string | null>(values.coverImageUrl);
+  const [metaTitleLength, setMetaTitleLength] = useState(values.metaTitle.length);
+  const [metaDescriptionLength, setMetaDescriptionLength] = useState(values.metaDescription.length);
+  const [metaKeywordsLength, setMetaKeywordsLength] = useState(values.metaKeywords.length);
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="flex min-w-0 flex-col gap-6">
       {values.id && <input type="hidden" name="id" value={values.id} />}
       <input type="hidden" name="contentMarkdown" value={content} />
 
@@ -157,13 +161,16 @@ export function ArticleEditorForm({
 
       {tags.length > 0 && <TagAutocompleteInput tags={tags} defaultSelectedIds={values.tagIds} />}
 
-      <div>
-        <label className="text-sm font-semibold">本文（Markdown）</label>
-        <div className="mt-1 overflow-hidden rounded-lg border border-border">
+      <div className="min-w-0">
+        <div className="flex items-baseline justify-between">
+          <label className="text-sm font-semibold">本文（Markdown）</label>
+          <span className="text-xs text-foreground-muted">{content.length}文字</span>
+        </div>
+        <div className="mt-1 min-w-0 overflow-hidden rounded-lg border border-border">
           <CodeMirror
             value={content}
             height="480px"
-            extensions={[markdown()]}
+            extensions={[markdown(), EditorView.lineWrapping]}
             onChange={(value) => setContent(value)}
           />
         </div>
@@ -173,29 +180,41 @@ export function ArticleEditorForm({
         <legend className="px-1 text-sm font-bold">SEOメタ情報</legend>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-xs font-semibold text-foreground-muted">メタタイトル</label>
+            <div className="flex items-baseline justify-between">
+              <label className="text-xs font-semibold text-foreground-muted">メタタイトル</label>
+              <span className="text-xs text-foreground-muted">{metaTitleLength}文字</span>
+            </div>
             <input
               name="metaTitle"
               defaultValue={values.metaTitle}
+              onChange={(e) => setMetaTitleLength(e.target.value.length)}
               placeholder="未入力の場合は記事タイトルを使用します"
               className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-foreground-muted">メタディスクリプション</label>
+            <div className="flex items-baseline justify-between">
+              <label className="text-xs font-semibold text-foreground-muted">メタディスクリプション</label>
+              <span className="text-xs text-foreground-muted">{metaDescriptionLength}文字</span>
+            </div>
             <textarea
               name="metaDescription"
               rows={2}
               defaultValue={values.metaDescription}
+              onChange={(e) => setMetaDescriptionLength(e.target.value.length)}
               placeholder="未入力の場合は抜粋を使用します"
               className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-foreground-muted">メタキーワード（カンマ区切り）</label>
+            <div className="flex items-baseline justify-between">
+              <label className="text-xs font-semibold text-foreground-muted">メタキーワード（カンマ区切り）</label>
+              <span className="text-xs text-foreground-muted">{metaKeywordsLength}文字</span>
+            </div>
             <input
               name="metaKeywords"
               defaultValue={values.metaKeywords}
+              onChange={(e) => setMetaKeywordsLength(e.target.value.length)}
               className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>

@@ -57,7 +57,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
           </form>
         </div>
       </aside>
-      <div className="flex-1 px-4 py-8 sm:px-8">
+      <div className="min-w-0 flex-1 px-4 py-8 sm:px-8">
         <Link href="/" target="_blank" className="text-xs text-foreground-muted hover:text-accent-dark">
           サイトを表示 →
         </Link>
