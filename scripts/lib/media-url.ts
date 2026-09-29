@@ -5,7 +5,11 @@ export type MediaUrlRewriteOptions = {
   newBaseUrl: string;
   /** 旧サイトでのアップロードパス接頭辞。デフォルトはWordPress標準の "/wp-content/uploads" */
   oldPathPrefix?: string;
-  /** 新ドメイン側でのアップロードパス接頭辞。 */
+  /**
+   * 新ドメイン側でのアップロードパス接頭辞。デフォルトは空文字("")。
+   * R2バケット側に"uploads"フォルダを作らず年フォルダを直下に置く構成を前提としている。
+   * バケット側に"uploads/"プレフィックスがある場合のみ "/uploads" 等を指定する。
+   */
   newPathPrefix?: string;
 };
 
@@ -21,14 +25,14 @@ function escapeRegExp(value: string): string {
  *   //old-site.example.com/wp-content/uploads/2024/01/foo.jpg (プロトコル相対)
  *   /wp-content/uploads/2024/01/foo.jpg (相対パス)
  *   www有無どちらも許容
- * → https://media.resilient-cer.com/uploads/2024/01/foo.jpg
+ * → https://media.resilient-cer.com/2024/01/foo.jpg
  *
  * ファイル名・クエリ文字列以降はそのまま維持し、ドメイン+アップロードパス接頭辞のみを置換する。
  * <img src>だけでなくsrcset内の複数URLや本文中のリンクも同じ置換で一括対応できる。
  */
 export function createMediaUrlRewriter(options: MediaUrlRewriteOptions) {
   const oldPathPrefix = options.oldPathPrefix ?? "/wp-content/uploads";
-  const newPathPrefix = options.newPathPrefix ?? "/uploads";
+  const newPathPrefix = options.newPathPrefix ?? "";
   const newBase = options.newBaseUrl.replace(/\/+$/, "");
   const domainPattern = escapeRegExp(options.oldDomain.replace(/^www\./i, ""));
   const pathPattern = escapeRegExp(oldPathPrefix);
