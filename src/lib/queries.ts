@@ -230,6 +230,31 @@ export async function getRelatedArticles(article: { id: string; categoryId: stri
   });
 }
 
+export async function getAdjacentArticles(article: { id: string; publishedAt: Date | null }) {
+  if (!article.publishedAt) return { prev: null, next: null };
+
+  const [prev, next] = await Promise.all([
+    prisma.article.findFirst({
+      where: {
+        status: "published",
+        publishedAt: { lt: article.publishedAt },
+      },
+      orderBy: { publishedAt: "desc" },
+      select: cardSelect,
+    }),
+    prisma.article.findFirst({
+      where: {
+        status: "published",
+        publishedAt: { gt: article.publishedAt, lte: new Date() },
+      },
+      orderBy: { publishedAt: "asc" },
+      select: cardSelect,
+    }),
+  ]);
+
+  return { prev, next };
+}
+
 export async function getPageBySlug(slug: string) {
   return prisma.page.findUnique({ where: { slug } });
 }
