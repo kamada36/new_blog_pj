@@ -9,10 +9,11 @@ import { ArticleBody } from "@/components/article/ArticleBody";
 import { TableOfContents } from "@/components/article/TableOfContents";
 import { ShareButtons } from "@/components/article/ShareButtons";
 import { ArticleCard } from "@/components/article/ArticleCard";
+import { ArticleAdjacentNav } from "@/components/article/ArticleAdjacentNav";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
-import { getArticleBySlug, getRelatedArticles, recordArticleView } from "@/lib/queries";
+import { getAdjacentArticles, getArticleBySlug, getRelatedArticles, recordArticleView } from "@/lib/queries";
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { getSessionUser } from "@/lib/auth";
 import { getViewRequestContext } from "@/lib/analytics";
@@ -58,6 +59,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
   const toc = extractHeadings(article.contentMarkdown);
   const related = await getRelatedArticles(article, 4);
   const relatedViewStatsMap = await getAdminViewStatsForArticles(related);
+  const { prev, next } = await getAdjacentArticles(article);
   const articleUrl = `${siteUrl}/articles/${article.slug}`;
 
   return (
@@ -160,6 +162,8 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
               </div>
             </div>
           )}
+
+          <ArticleAdjacentNav prev={prev} next={next} />
         </article>
 
         <Sidebar articleToc={toc} />
