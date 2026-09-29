@@ -6,6 +6,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { saveArticle, type ArticleFormState } from "./actions";
 import { slugify } from "@/lib/slug";
+import { TagAutocompleteInput } from "@/components/admin/TagAutocompleteInput";
 
 const initialState: ArticleFormState = { status: "idle" };
 
@@ -154,24 +155,7 @@ export function ArticleEditorForm({
         </div>
       </div>
 
-      {tags.length > 0 && (
-        <div>
-          <p className="text-sm font-semibold">タグ</p>
-          <div className="mt-2 flex flex-wrap gap-3">
-            {tags.map((tag) => (
-              <label key={tag.id} className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  name="tagIds"
-                  value={tag.id}
-                  defaultChecked={values.tagIds.includes(tag.id)}
-                />
-                {tag.name}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
+      {tags.length > 0 && <TagAutocompleteInput tags={tags} defaultSelectedIds={values.tagIds} />}
 
       <div>
         <label className="text-sm font-semibold">本文（Markdown）</label>
