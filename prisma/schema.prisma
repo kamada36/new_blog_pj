@@ -62,6 +62,9 @@ model Tag {
 
 model Article {
   id              String    @id @default(cuid())
+  // WordPressからの移行元記事ID。手動作成記事はnull。
+  // 移行スクリプト(scripts/import-wordpress.ts)がこのキーでupsertし、再実行しても重複を作らない。
+  wpId            Int?      @unique
   title           String
   slug            String    @unique
   excerpt         String    @default("")

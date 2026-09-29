@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "import:wordpress": "tsx scripts/import-wordpress.ts",
+    "import:wordpress-sql": "tsx scripts/import-wordpress-sql.ts"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.2",
@@ -42,6 +44,7 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "node-html-markdown": "^2.0.0",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
