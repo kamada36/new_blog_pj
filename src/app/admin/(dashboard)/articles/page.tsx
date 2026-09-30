@@ -27,13 +27,25 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
   const q = getParam("q").trim();
   const categoryId = getParam("categoryId");
   const status = getParam("status");
+  const publishedFrom = getParam("publishedFrom");
+  const publishedTo = getParam("publishedTo");
   const sortParam = getParam("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "updated_desc";
+
+  const publishedAtFilter: Prisma.DateTimeFilter = {};
+  if (publishedFrom && !Number.isNaN(Date.parse(publishedFrom))) {
+    publishedAtFilter.gte = new Date(`${publishedFrom}T00:00:00`);
+  }
+  if (publishedTo && !Number.isNaN(Date.parse(publishedTo))) {
+    publishedAtFilter.lte = new Date(`${publishedTo}T23:59:59.999`);
+  }
+  const hasPublishedAtFilter = Object.keys(publishedAtFilter).length > 0;
 
   const where: Prisma.ArticleWhereInput = {
     ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
     ...(categoryId ? { categoryId } : {}),
     ...(status ? { status } : {}),
+    ...(hasPublishedAtFilter ? { publishedAt: publishedAtFilter } : {}),
   };
 
   const [articles, categories] = await Promise.all([
@@ -59,7 +71,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     viewStats: viewStatsMap?.get(article.id) ?? null,
   }));
 
-  const hasFilters = Boolean(q || categoryId || status || sortParam);
+  const hasFilters = Boolean(q || categoryId || status || publishedFrom || publishedTo || sortParam);
 
   return (
     <div>
@@ -114,6 +126,24 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
             <option value="draft">下書き</option>
             <option value="private">非公開</option>
           </select>
+        </div>
+        <div className="min-w-[130px]">
+          <label className="text-xs font-semibold text-foreground-muted">公開日（から）</label>
+          <input
+            type="date"
+            name="publishedFrom"
+            defaultValue={publishedFrom}
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        <div className="min-w-[130px]">
+          <label className="text-xs font-semibold text-foreground-muted">公開日（まで）</label>
+          <input
+            type="date"
+            name="publishedTo"
+            defaultValue={publishedTo}
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          />
         </div>
         <div className="min-w-[170px]">
           <label className="text-xs font-semibold text-foreground-muted">並び替え</label>
