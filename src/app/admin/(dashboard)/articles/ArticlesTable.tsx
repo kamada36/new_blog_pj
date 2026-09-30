@@ -22,6 +22,7 @@ type ArticleRow = {
   titleLength: number;
   contentLength: number;
   status: string;
+  publishedAt: Date | null;
   updatedAt: Date;
   coverImageUrl: string | null;
   category: { name: string };
@@ -117,6 +118,7 @@ export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
               <th className="px-4 py-3">カテゴリー</th>
               <th className="px-4 py-3">状態</th>
               <th className="px-4 py-3">閲覧数</th>
+              <th className="px-4 py-3">公開日</th>
               <th className="px-4 py-3">更新日</th>
               <th className="px-4 py-3" />
             </tr>
@@ -185,6 +187,9 @@ export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
                   ) : (
                     "-"
                   )}
+                </td>
+                <td className="px-4 py-3 text-foreground-muted">
+                  {article.publishedAt ? formatDate(article.publishedAt) : "-"}
                 </td>
                 <td className="px-4 py-3 text-foreground-muted">{formatDate(article.updatedAt)}</td>
                 <td className="px-4 py-3 text-right">

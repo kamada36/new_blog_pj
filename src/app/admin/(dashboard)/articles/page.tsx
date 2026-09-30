@@ -52,6 +52,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     titleLength: article.title.length,
     contentLength: article.contentMarkdown.length,
     status: article.status,
+    publishedAt: article.publishedAt,
     updatedAt: article.updatedAt,
     coverImageUrl: article.coverImageUrl,
     category: article.category,
