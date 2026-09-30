@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/admin/articles", label: "記事" },
   { href: "/admin/categories", label: "カテゴリー" },
   { href: "/admin/tags", label: "タグ" },
+  { href: "/admin/shortcodes", label: "ショートコード" },
   { href: "/admin/pages", label: "固定ページ" },
   { href: "/admin/messages", label: "お問い合わせ" },
   { href: "/admin/profile", label: "プロフィール" },

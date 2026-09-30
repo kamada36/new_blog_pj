@@ -9,6 +9,7 @@ import { saveArticle, type ArticleFormState } from "./actions";
 import { slugify } from "@/lib/slug";
 import { TagAutocompleteInput } from "@/components/admin/TagAutocompleteInput";
 import { ArticleBody } from "@/components/article/ArticleBody";
+import type { ShortcodePreset } from "@/lib/shortcodes";
 
 const PREVIEW_STORAGE_KEY = "articlePreviewData";
 
@@ -61,10 +62,12 @@ const emptyValues: ArticleInitialValues = {
 export function ArticleEditorForm({
   categories,
   tags,
+  shortcodes,
   initialValues,
 }: {
   categories: Category[];
   tags: Tag[];
+  shortcodes: ShortcodePreset[];
   initialValues?: ArticleInitialValues;
 }) {
   const values = initialValues ?? emptyValues;
@@ -122,7 +125,7 @@ export function ArticleEditorForm({
     try {
       localStorage.setItem(
         PREVIEW_STORAGE_KEY,
-        JSON.stringify({ title, contentMarkdown: content, coverImageUrl: coverPreview, categoryName })
+        JSON.stringify({ title, contentMarkdown: content, coverImageUrl: coverPreview, categoryName, shortcodes })
       );
     } catch {
       // localStorageが使えない環境ではプレビューを諦める
@@ -271,7 +274,7 @@ export function ArticleEditorForm({
               className="min-w-0 overflow-y-auto rounded-lg border border-border bg-surface p-4"
               style={{ height: 480 }}
             >
-              <ArticleBody markdown={content || "(本文未入力)"} />
+              <ArticleBody markdown={content || "(本文未入力)"} shortcodes={shortcodes} />
             </div>
           )}
         </div>

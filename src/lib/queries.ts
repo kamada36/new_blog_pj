@@ -52,6 +52,11 @@ export const getCategories = cache(async function getCategories() {
   return prisma.category.findMany({ orderBy: { order: "asc" } });
 });
 
+// 記事本文中の [sc name="xxx"] ショートコード展開に使う、キャラクター吹き出しプリセット一覧。
+export const getShortcodes = cache(async function getShortcodes() {
+  return prisma.shortcode.findMany({ orderBy: { createdAt: "asc" } });
+});
+
 export async function getCategoryBySlug(slug: string) {
   return prisma.category.findUnique({ where: { slug } });
 }
