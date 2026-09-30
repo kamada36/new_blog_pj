@@ -52,6 +52,18 @@ model Category {
   articles    Article[]
 }
 
+// 記事本文中で [sc name="xxx"]コメント[/sc] の形式で呼び出す、
+// キャラクター吹き出しコメントのプリセット(WordPress版Shortcoderの後継)。
+model Shortcode {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  iconUrl     String
+  position    String   @default("l") // "l" | "r"(吹き出しアイコンの左右位置)
+  defaultTalk String   @default("コメント")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Tag {
   id        String    @id @default(cuid())
   name      String

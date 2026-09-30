@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Container } from "@/components/layout/Container";
 import { ArticleBody } from "@/components/article/ArticleBody";
 import { IconMug } from "@/components/icons/CafeIcons";
+import type { ShortcodePreset } from "@/lib/shortcodes";
 
 const PREVIEW_STORAGE_KEY = "articlePreviewData";
 
@@ -13,6 +14,7 @@ type PreviewData = {
   contentMarkdown: string;
   coverImageUrl: string | null;
   categoryName: string;
+  shortcodes: ShortcodePreset[];
 };
 
 function subscribeStorageChange(callback: () => void) {
@@ -78,7 +80,7 @@ export default function ArticlePreviewPage() {
         </div>
 
         <div className="mt-8">
-          <ArticleBody markdown={data.contentMarkdown || "(本文未入力)"} />
+          <ArticleBody markdown={data.contentMarkdown || "(本文未入力)"} shortcodes={data.shortcodes ?? []} />
         </div>
       </div>
     </Container>

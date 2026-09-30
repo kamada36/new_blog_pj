@@ -10,10 +10,26 @@ export function ArticleTocWidget({ items }: { items: TocItem[] }) {
   const [open, setOpen] = useState(true);
   const activeId = useScrollSpy(items.map((item) => item.id));
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const listRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
     if (!activeId) return;
-    itemRefs.current.get(activeId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const container = listRef.current;
+    const target = itemRefs.current.get(activeId);
+    if (!container || !target) return;
+    // Scroll only within the toc list itself — never let this bubble up to
+    // the page scroll, which happens if we use el.scrollIntoView() and the
+    // list has no overflow of its own (browser falls back to the window as
+    // the "nearest" scrollable ancestor).
+    if (container.scrollHeight <= container.clientHeight) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    if (targetRect.top < containerRect.top) {
+      container.scrollBy({ top: targetRect.top - containerRect.top, behavior: "smooth" });
+    } else if (targetRect.bottom > containerRect.bottom) {
+      container.scrollBy({ top: targetRect.bottom - containerRect.bottom, behavior: "smooth" });
+    }
   }, [activeId]);
 
   if (items.length === 0) return null;
@@ -34,7 +50,7 @@ export function ArticleTocWidget({ items }: { items: TocItem[] }) {
         />
       </button>
       {open && (
-        <ol className="mt-3 flex max-h-[45vh] flex-col gap-1 overflow-y-auto pr-1 text-sm">
+        <ol ref={listRef} className="mt-3 flex max-h-[45vh] flex-col gap-1 overflow-y-auto pr-1 text-sm">
           {numbered.map((item) => {
             const isActive = item.id === activeId;
             return (

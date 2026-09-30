@@ -13,7 +13,13 @@ import { ArticleAdjacentNav } from "@/components/article/ArticleAdjacentNav";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
-import { getAdjacentArticles, getArticleBySlug, getRelatedArticles, recordArticleView } from "@/lib/queries";
+import {
+  getAdjacentArticles,
+  getArticleBySlug,
+  getRelatedArticles,
+  getShortcodes,
+  recordArticleView,
+} from "@/lib/queries";
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { getSessionUser } from "@/lib/auth";
 import { getViewRequestContext } from "@/lib/analytics";
@@ -60,6 +66,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
   const related = await getRelatedArticles(article, 4);
   const relatedViewStatsMap = await getAdminViewStatsForArticles(related);
   const { prev, next } = await getAdjacentArticles(article);
+  const shortcodes = await getShortcodes();
   const articleUrl = `${siteUrl}/articles/${article.slug}`;
 
   return (
@@ -106,7 +113,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
           )}
 
           <div className="mt-8">
-            <ArticleBody markdown={article.contentMarkdown} />
+            <ArticleBody markdown={article.contentMarkdown} shortcodes={shortcodes} />
           </div>
 
           {article.tags.length > 0 && (

@@ -5,10 +5,11 @@ import { ArticleEditorForm } from "../ArticleEditorForm";
 export default async function EditArticlePage({ params }: PageProps<"/admin/articles/[id]">) {
   const { id } = await params;
 
-  const [article, categories, tags] = await Promise.all([
+  const [article, categories, tags, shortcodes] = await Promise.all([
     prisma.article.findUnique({ where: { id }, include: { tags: true } }),
     prisma.category.findMany({ orderBy: { order: "asc" } }),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
+    prisma.shortcode.findMany({ orderBy: { createdAt: "asc" } }),
   ]);
 
   if (!article) notFound();
@@ -20,6 +21,7 @@ export default async function EditArticlePage({ params }: PageProps<"/admin/arti
         <ArticleEditorForm
           categories={categories}
           tags={tags}
+          shortcodes={shortcodes}
           initialValues={{
             id: article.id,
             title: article.title,
