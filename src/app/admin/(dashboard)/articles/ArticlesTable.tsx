@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
+import { IconBarChart, IconMug } from "@/components/icons/CafeIcons";
+import type { ArticleViewStats } from "@/lib/queries";
 import { bulkDeleteArticles, bulkUpdateArticleStatus, deleteArticle } from "./actions";
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -17,9 +20,10 @@ type ArticleRow = {
   id: string;
   title: string;
   status: string;
-  viewCount: number;
   updatedAt: Date;
+  coverImageUrl: string | null;
   category: { name: string };
+  viewStats: ArticleViewStats | null;
 };
 
 export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
@@ -106,6 +110,7 @@ export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
               <th className="px-4 py-3">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="すべて選択" />
               </th>
+              <th className="px-4 py-3">画像</th>
               <th className="px-4 py-3">タイトル</th>
               <th className="px-4 py-3">カテゴリー</th>
               <th className="px-4 py-3">状態</th>
@@ -125,18 +130,54 @@ export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
                     aria-label={`${article.title}を選択`}
                   />
                 </td>
-                <td className="max-w-xs truncate px-4 py-3 font-medium">{article.title}</td>
-                <td className="px-4 py-3 text-foreground-muted">{article.category.name}</td>
                 <td className="px-4 py-3">
+                  <div className="relative h-10 w-16 shrink-0 overflow-hidden rounded-md bg-surface-muted">
+                    {article.coverImageUrl ? (
+                      <Image
+                        src={article.coverImageUrl}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <IconMug className="h-4 w-4 text-accent/50" />
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="max-w-xs px-4 py-3 font-medium">
+                  <Link
+                    href={`/admin/articles/${article.id}`}
+                    className="line-clamp-1 hover:text-accent-dark hover:underline"
+                  >
+                    {article.title}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-foreground-muted">{article.category.name}</td>
+                <td className="px-4 py-3 text-center">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    className={`inline-block rounded-md px-1 py-1.5 text-xs font-semibold [text-orientation:upright] [writing-mode:vertical-rl] ${
                       (STATUS_BADGES[article.status] ?? STATUS_BADGES.draft).className
                     }`}
                   >
                     {(STATUS_BADGES[article.status] ?? STATUS_BADGES.draft).label}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-foreground-muted">{article.viewCount}</td>
+                <td className="px-4 py-3 text-foreground-muted">
+                  {article.viewStats ? (
+                    <div className="flex flex-wrap items-center gap-x-1.5 text-xs">
+                      <IconBarChart className="h-3 w-3 shrink-0 text-accent" />
+                      <span>本日:{article.viewStats.today}</span>
+                      <span>週:{article.viewStats.week}</span>
+                      <span>月:{article.viewStats.month}</span>
+                      <span>全体:{article.viewStats.total}</span>
+                    </div>
+                  ) : (
+                    "-"
+                  )}
+                </td>
                 <td className="px-4 py-3 text-foreground-muted">{formatDate(article.updatedAt)}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-3">

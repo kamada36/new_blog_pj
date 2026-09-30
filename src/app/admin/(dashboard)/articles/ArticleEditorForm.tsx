@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
@@ -8,6 +8,21 @@ import { EditorView } from "@codemirror/view";
 import { saveArticle, type ArticleFormState } from "./actions";
 import { slugify } from "@/lib/slug";
 import { TagAutocompleteInput } from "@/components/admin/TagAutocompleteInput";
+import { ArticleBody } from "@/components/article/ArticleBody";
+
+const PREVIEW_STORAGE_KEY = "articlePreviewData";
+
+function subscribeDarkModeChange(callback: () => void) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+function getDarkModeSnapshot() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function getDarkModeServerSnapshot() {
+  return false;
+}
 
 const initialState: ArticleFormState = { status: "idle" };
 
@@ -57,11 +72,63 @@ export function ArticleEditorForm({
   const [title, setTitle] = useState(values.title);
   const [slug, setSlug] = useState(values.slug);
   const [slugTouched, setSlugTouched] = useState(Boolean(values.slug));
+  const [categoryId, setCategoryId] = useState(values.categoryId);
   const [content, setContent] = useState(values.contentMarkdown);
   const [coverPreview, setCoverPreview] = useState<string | null>(values.coverImageUrl);
   const [metaTitleLength, setMetaTitleLength] = useState(values.metaTitle.length);
   const [metaDescriptionLength, setMetaDescriptionLength] = useState(values.metaDescription.length);
   const [metaKeywordsLength, setMetaKeywordsLength] = useState(values.metaKeywords.length);
+  const [splitPreview, setSplitPreview] = useState(false);
+  const isDark = useSyncExternalStore(subscribeDarkModeChange, getDarkModeSnapshot, getDarkModeServerSnapshot);
+
+  const editorScrollElRef = useRef<HTMLElement | null>(null);
+  const previewScrollElRef = useRef<HTMLDivElement | null>(null);
+  // "editor"/"preview": プログラム側でスクロール位置を設定した直後であることを示すフラグ。
+  // 相手側のscrollイベントを1回だけ無視して、お互いを無限に呼び合うのを防ぐ。
+  const syncSourceRef = useRef<"editor" | "preview" | null>(null);
+
+  function syncScrollRatio(from: HTMLElement, to: HTMLElement, source: "editor" | "preview") {
+    const fromRange = from.scrollHeight - from.clientHeight;
+    const ratio = fromRange > 0 ? from.scrollTop / fromRange : 0;
+    const toRange = to.scrollHeight - to.clientHeight;
+    syncSourceRef.current = source;
+    to.scrollTop = ratio * toRange;
+  }
+
+  function handleEditorScroll() {
+    if (syncSourceRef.current === "preview") {
+      syncSourceRef.current = null;
+      return;
+    }
+    const editorEl = editorScrollElRef.current;
+    const previewEl = previewScrollElRef.current;
+    if (!editorEl || !previewEl) return;
+    syncScrollRatio(editorEl, previewEl, "editor");
+  }
+
+  function handlePreviewScroll() {
+    if (syncSourceRef.current === "editor") {
+      syncSourceRef.current = null;
+      return;
+    }
+    const editorEl = editorScrollElRef.current;
+    const previewEl = previewScrollElRef.current;
+    if (!editorEl || !previewEl) return;
+    syncScrollRatio(previewEl, editorEl, "preview");
+  }
+
+  function openPreviewInNewTab() {
+    const categoryName = categories.find((c) => c.id === categoryId)?.name ?? "";
+    try {
+      localStorage.setItem(
+        PREVIEW_STORAGE_KEY,
+        JSON.stringify({ title, contentMarkdown: content, coverImageUrl: coverPreview, categoryName })
+      );
+    } catch {
+      // localStorageが使えない環境ではプレビューを諦める
+    }
+    window.open("/admin/preview", "_blank");
+  }
 
   return (
     <form action={formAction} className="flex min-w-0 flex-col gap-6">
@@ -102,7 +169,8 @@ export function ArticleEditorForm({
           <select
             name="categoryId"
             required
-            defaultValue={values.categoryId}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
             className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           >
             <option value="" disabled>
@@ -162,17 +230,50 @@ export function ArticleEditorForm({
       {tags.length > 0 && <TagAutocompleteInput tags={tags} defaultSelectedIds={values.tagIds} />}
 
       <div className="min-w-0">
-        <div className="flex items-baseline justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <label className="text-sm font-semibold">本文（Markdown）</label>
-          <span className="text-xs text-foreground-muted">{content.length}文字</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-foreground-muted">{content.length}文字</span>
+            <button
+              type="button"
+              onClick={() => setSplitPreview((prev) => !prev)}
+              className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+            >
+              {splitPreview ? "分割プレビューを閉じる" : "分割プレビュー"}
+            </button>
+            <button
+              type="button"
+              onClick={openPreviewInNewTab}
+              className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+            >
+              新しいタブでプレビュー
+            </button>
+          </div>
         </div>
-        <div className="mt-1 min-w-0 overflow-hidden rounded-lg border border-border">
-          <CodeMirror
-            value={content}
-            height="480px"
-            extensions={[markdown(), EditorView.lineWrapping]}
-            onChange={(value) => setContent(value)}
-          />
+        <div className={`mt-1 grid min-w-0 gap-4 ${splitPreview ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+          <div className="min-w-0 overflow-hidden rounded-lg border border-border">
+            <CodeMirror
+              value={content}
+              height="480px"
+              theme={isDark ? "dark" : "light"}
+              extensions={[markdown(), EditorView.lineWrapping]}
+              onChange={(value) => setContent(value)}
+              onCreateEditor={(view) => {
+                editorScrollElRef.current = view.scrollDOM;
+                view.scrollDOM.addEventListener("scroll", handleEditorScroll);
+              }}
+            />
+          </div>
+          {splitPreview && (
+            <div
+              ref={previewScrollElRef}
+              onScroll={handlePreviewScroll}
+              className="min-w-0 overflow-y-auto rounded-lg border border-border bg-surface p-4"
+              style={{ height: 480 }}
+            >
+              <ArticleBody markdown={content || "(本文未入力)"} />
+            </div>
+          )}
         </div>
       </div>
 
