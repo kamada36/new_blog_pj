@@ -240,8 +240,8 @@ body {
 .article-balloon {
   display: flex;
   align-items: flex-start;
-  gap: 0.75em;
-  margin: 1.2em 0;
+  gap: 0.85em;
+  margin: 1.4em 0;
 }
 
 .article-balloon-right {
@@ -249,38 +249,71 @@ body {
 }
 
 .article-balloon-icon {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 9999px;
   object-fit: cover;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .article-balloon-text {
   position: relative;
-  background: var(--surface-muted);
-  border-radius: 0.9em;
-  padding: 0.7em 1em;
-  max-width: calc(100% - 80px);
+  border-radius: 1.1em;
+  padding: 0.85em 1.1em;
+  max-width: calc(100% - 96px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  line-height: 1.7;
 }
 
+/*
+ * 吹き出しの「しっぽ」はborderトリック(幅0の要素にborderだけ付けて三角形を作る)で実装している。
+ * border-right-colorだけ色を付けると、三角形の底辺(色が付いた面)は要素の右端に、
+ * 頂点(とがった部分)は要素の中心にできる。吹き出しの外に頂点を突き出すには、
+ * 要素の右端が吹き出しの左端(left:0)にちょうど重なる位置、
+ * つまり `left: -(要素の幅) = -(border幅 × 2)` に置く必要がある。
+ * (以前は -border幅 にしていたため、頂点が吹き出しの内側で止まってしまっていた)
+ */
 .article-balloon-text::before {
   content: "";
   position: absolute;
-  top: 14px;
+  top: 20px;
   width: 0;
   height: 0;
-  border: 8px solid transparent;
+  border: 10px solid transparent;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12));
+}
+
+.article-balloon-left .article-balloon-text {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
 }
 
 .article-balloon-left .article-balloon-text::before {
-  left: -8px;
+  left: -20px; /* -(10px × 2) */
   border-right-color: var(--surface-muted);
 }
 
+@media (prefers-color-scheme: dark) {
+  /* ダークモードは背景色とほぼ同化してしまうため、はっきり明るい色に差し替える(文字色は--foregroundのまま維持)。 */
+  .article-balloon-left .article-balloon-text {
+    background: #46392a;
+    border-color: #6b5843;
+  }
+
+  .article-balloon-left .article-balloon-text::before {
+    border-right-color: #46392a;
+  }
+}
+
+.article-balloon-right .article-balloon-text {
+  background: #fce4ec;
+  color: #442222;
+}
+
 .article-balloon-right .article-balloon-text::before {
-  right: -8px;
-  border-left-color: var(--surface-muted);
+  right: -20px; /* -(10px × 2) */
+  border-left-color: #fce4ec;
 }
 
 .article-balloon-missing {

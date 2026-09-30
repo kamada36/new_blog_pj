@@ -8,10 +8,15 @@ import { BALLOON_ICON_ALT_PREFIX, expandShortcodes, type ShortcodePreset } from 
 
 type ImgProps = { src?: string; alt?: string };
 
+/** 改行だけの空白テキストノードを除いた、実質的な子要素だけを取り出す。 */
+function significantChildren(children: ReactNode): ReactNode[] {
+  return Children.toArray(children).filter((child) => !(typeof child === "string" && child.trim() === ""));
+}
+
 /** blockquoteの最初の段落が「吹き出しアイコン専用画像」だけを含む場合、そのimg要素を取り出す。 */
 function extractBalloonIcon(firstChild: ReactNode): ReactElement<ImgProps> | null {
   if (!isValidElement(firstChild)) return null;
-  const innerChildren = Children.toArray((firstChild.props as { children?: ReactNode }).children);
+  const innerChildren = significantChildren((firstChild.props as { children?: ReactNode }).children);
   if (innerChildren.length !== 1) return null;
 
   const only = innerChildren[0];
@@ -25,7 +30,7 @@ function extractBalloonIcon(firstChild: ReactNode): ReactElement<ImgProps> | nul
 
 const baseComponents: Components = {
   blockquote({ children, ...props }) {
-    const [firstChild, ...restChildren] = Children.toArray(children);
+    const [firstChild, ...restChildren] = significantChildren(children);
     const icon = extractBalloonIcon(firstChild);
 
     if (icon) {
