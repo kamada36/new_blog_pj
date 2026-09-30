@@ -19,6 +19,8 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 type ArticleRow = {
   id: string;
   title: string;
+  titleLength: number;
+  contentLength: number;
   status: string;
   updatedAt: Date;
   coverImageUrl: string | null;
@@ -154,6 +156,12 @@ export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
                   >
                     {article.title}
                   </Link>
+                  <span className="block text-xs font-normal text-foreground-muted">
+                    タイトル: {article.titleLength}
+                  </span>
+                  <span className="block text-xs font-normal text-foreground-muted">
+                    本文: {article.contentLength}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-foreground-muted">{article.category.name}</td>
                 <td className="px-4 py-3 text-center">
