@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { ArticlesTable } from "./ArticlesTable";
 
 const SORT_OPTIONS = {
@@ -43,6 +44,12 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     }),
     prisma.category.findMany({ orderBy: { order: "asc" } }),
   ]);
+
+  const viewStatsMap = await getAdminViewStatsForArticles(articles);
+  const rows = articles.map((article) => ({
+    ...article,
+    viewStats: viewStatsMap?.get(article.id) ?? null,
+  }));
 
   const hasFilters = Boolean(q || categoryId || status || sortParam);
 
@@ -128,7 +135,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
       </form>
 
       <div className="mt-6">
-        <ArticlesTable articles={articles} />
+        <ArticlesTable articles={rows} />
       </div>
     </div>
   );
