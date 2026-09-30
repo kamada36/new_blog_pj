@@ -47,7 +47,14 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
 
   const viewStatsMap = await getAdminViewStatsForArticles(articles);
   const rows = articles.map((article) => ({
-    ...article,
+    id: article.id,
+    title: article.title,
+    titleLength: article.title.length,
+    contentLength: article.contentMarkdown.length,
+    status: article.status,
+    updatedAt: article.updatedAt,
+    coverImageUrl: article.coverImageUrl,
+    category: article.category,
     viewStats: viewStatsMap?.get(article.id) ?? null,
   }));
 
