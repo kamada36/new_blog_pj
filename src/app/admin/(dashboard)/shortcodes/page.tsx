@@ -55,6 +55,7 @@ export default async function AdminShortcodesPage({ searchParams }: PageProps<"/
             />
             <ImagePickerField
               name="icon"
+              usageTypeFilter="setting"
               previewClassName={ICON_PREVIEW_CLASS}
               fallback={iconPreview(shortcode.iconUrl)}
             />
@@ -102,6 +103,7 @@ export default async function AdminShortcodesPage({ searchParams }: PageProps<"/
         />
         <ImagePickerField
           name="icon"
+          usageTypeFilter="setting"
           previewClassName={ICON_PREVIEW_CLASS}
           fallback={
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-foreground-muted">

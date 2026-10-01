@@ -36,6 +36,7 @@ export default async function AdminProfilePage({ searchParams }: PageProps<"/adm
           <div className="mt-1">
             <ImagePickerField
               name="avatar"
+              usageTypeFilter="setting"
               previewClassName={AVATAR_PREVIEW_CLASS}
               fallback={
                 user.avatarUrl ? (

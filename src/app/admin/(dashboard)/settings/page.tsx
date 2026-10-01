@@ -176,6 +176,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
             <div className="mt-2">
               <ImagePickerField
                 name="residentAvatar"
+                usageTypeFilter="setting"
                 previewClassName="h-14 w-14 rounded-full object-cover"
                 fallback={
                   setting.residentAvatarUrl ? (
@@ -245,6 +246,7 @@ function HeroImageField({
       <div className="mt-2">
         <ImagePickerField
           name={name}
+          usageTypeFilter="setting"
           previewClassName={HERO_PREVIEW_CLASS}
           fallback={
             currentUrl ? (

@@ -3,16 +3,19 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { listMedia, uploadMedia, type MediaItem } from "@/app/admin/(dashboard)/media/actions";
+import { listMedia, uploadMedia, type MediaItem, type MediaUsageType } from "@/app/admin/(dashboard)/media/actions";
 
 export function MediaPickerModal({
   open,
   onClose,
   onSelect,
+  usageTypeFilter,
 }: {
   open: boolean;
   onClose: () => void;
   onSelect: (item: MediaItem) => void;
+  /** 指定すると、その用途(記事用/設定用)のメディアのみ一覧表示する。 */
+  usageTypeFilter?: MediaUsageType;
 }) {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, startLoad] = useTransition();
@@ -21,15 +24,15 @@ export function MediaPickerModal({
   useEffect(() => {
     if (!open) return;
     startLoad(async () => {
-      const data = await listMedia();
+      const data = await listMedia(usageTypeFilter);
       setItems(data);
     });
-  }, [open]);
+  }, [open, usageTypeFilter]);
 
   function handleUpload(formData: FormData) {
     startUpload(async () => {
-      await uploadMedia(formData);
-      const data = await listMedia();
+      await uploadMedia(formData, usageTypeFilter);
+      const data = await listMedia(usageTypeFilter);
       setItems(data);
     });
   }

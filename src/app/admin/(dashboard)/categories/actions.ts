@@ -30,7 +30,7 @@ export async function createCategory(formData: FormData) {
     redirectWithError("入力内容をご確認ください。");
     return;
   }
-  const iconUrl = await resolveImageField(formData, "icon", "categories");
+  const iconUrl = await resolveImageField(formData, "icon", "categories", "setting");
   await prisma.category.create({ data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) } });
   revalidatePath("/");
   revalidatePath("/admin/categories");
@@ -48,7 +48,7 @@ export async function updateCategory(id: string, formData: FormData) {
     redirectWithError("入力内容をご確認ください。");
     return;
   }
-  const iconUrl = await resolveImageField(formData, "icon", "categories");
+  const iconUrl = await resolveImageField(formData, "icon", "categories", "setting");
   await prisma.category.update({ where: { id }, data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) } });
   revalidatePath("/");
   revalidatePath("/admin/categories");

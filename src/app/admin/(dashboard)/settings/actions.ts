@@ -78,7 +78,7 @@ export async function updateResident(formData: FormData) {
     return;
   }
 
-  const residentAvatarUrl = await resolveImageField(formData, "residentAvatar", "settings");
+  const residentAvatarUrl = await resolveImageField(formData, "residentAvatar", "settings", "setting");
 
   const data = {
     ...parsed.data,
@@ -97,9 +97,9 @@ export async function updateResident(formData: FormData) {
 
 export async function updateHeroAssets(formData: FormData) {
   const [heroBackgroundUrl, heroCharacterResilientUrl, heroCharacterAikoUrl] = await Promise.all([
-    resolveImageField(formData, "heroBackground", "hero"),
-    resolveImageField(formData, "heroCharacterResilient", "hero"),
-    resolveImageField(formData, "heroCharacterAiko", "hero"),
+    resolveImageField(formData, "heroBackground", "hero", "setting"),
+    resolveImageField(formData, "heroCharacterResilient", "hero", "setting"),
+    resolveImageField(formData, "heroCharacterAiko", "hero", "setting"),
   ]);
 
   if (!heroBackgroundUrl && !heroCharacterResilientUrl && !heroCharacterAikoUrl) {

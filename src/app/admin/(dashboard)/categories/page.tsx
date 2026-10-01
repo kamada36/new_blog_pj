@@ -71,6 +71,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps<"/
             </div>
             <ImagePickerField
               name="icon"
+              usageTypeFilter="setting"
               buttonLabel="アイコンをライブラリから選択"
               previewClassName={ICON_PREVIEW_CLASS}
               fallback={
@@ -102,6 +103,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps<"/
         </div>
         <ImagePickerField
           name="icon"
+          usageTypeFilter="setting"
           buttonLabel="アイコンをライブラリから選択"
           previewClassName={ICON_PREVIEW_CLASS}
           fallback={
