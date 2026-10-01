@@ -31,6 +31,15 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
   const toc = articleToc ?? [];
   const hasStickyToc = toc.length > 0;
 
+  const compactAd = siteSetting.sponsorSidebarCompactEmbed ? (
+    <section className="rounded-2xl border border-border bg-surface p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">広告</p>
+      <div className="mt-2 flex justify-center">
+        <SponsorEmbed html={siteSetting.sponsorSidebarCompactEmbed} />
+      </div>
+    </section>
+  ) : null;
+
   return (
     <aside className="flex flex-col gap-8">
       {author && (
@@ -135,18 +144,13 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
       {hasStickyToc && (
         <div className="lg:flex-1">
           <div className="flex flex-col gap-4 lg:sticky lg:top-24">
-            {siteSetting.sponsorSidebarCompactEmbed && (
-              <section className="rounded-2xl border border-border bg-surface p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">広告</p>
-                <div className="mt-2 flex justify-center">
-                  <SponsorEmbed html={siteSetting.sponsorSidebarCompactEmbed} />
-                </div>
-              </section>
-            )}
+            {compactAd}
             <ArticleTocWidget items={toc} />
           </div>
         </div>
       )}
+
+      {!hasStickyToc && compactAd}
 
       {archive.length > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-5">
