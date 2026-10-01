@@ -39,6 +39,11 @@ model SiteSetting {
   heroBackgroundUrl         String? // 背景画像
   heroCharacterResilientUrl String? // キャラクター「レジサン」
   heroCharacterAikoUrl      String? // キャラクター「アイコ」
+
+  // サイドバーウィジェット「サイトの住人」
+  residentName      String  @default("アイコ")
+  residentBio       String  @default("プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。")
+  residentAvatarUrl String? // 未設定時はデフォルトアイコンを表示
 }
 
 model Category {
