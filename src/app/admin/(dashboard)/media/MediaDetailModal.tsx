@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
-import { updateMedia, type MediaRow } from "./actions";
+import { updateMedia, type MediaRow, type MediaUsageType } from "./actions";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes}B`;
@@ -28,6 +28,7 @@ export function MediaDetailModal({
 }) {
   const [filename, setFilename] = useState(item.filename);
   const [altText, setAltText] = useState(item.altText);
+  const [usageType, setUsageType] = useState<MediaUsageType>(item.usageType);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [isSaving, startSaving] = useTransition();
 
@@ -35,6 +36,7 @@ export function MediaDetailModal({
     const formData = new FormData();
     formData.set("filename", filename);
     formData.set("altText", altText);
+    formData.set("usageType", usageType);
     startSaving(async () => {
       const result = await updateMedia(item.id, formData);
       if (result.status === "error") {
@@ -104,6 +106,40 @@ export function MediaDetailModal({
             placeholder="画像の説明(アクセシビリティ・SEO用)"
             className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-foreground-muted">用途</label>
+          <div className="mt-1 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setUsageType("article")}
+              className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm ${
+                usageType === "article"
+                  ? "border-accent bg-accent-soft text-accent-dark"
+                  : "border-border text-foreground-muted hover:border-accent"
+              }`}
+            >
+              記事用
+              <span className="block text-[11px] font-normal text-foreground-muted">
+                アイキャッチ・記事内メディアなど記事ごとに使う画像
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUsageType("setting")}
+              className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm ${
+                usageType === "setting"
+                  ? "border-accent bg-accent-soft text-accent-dark"
+                  : "border-border text-foreground-muted hover:border-accent"
+              }`}
+            >
+              設定用
+              <span className="block text-[11px] font-normal text-foreground-muted">
+                プロフィール画像・カテゴリーアイコンなど標準的に使い回す画像
+              </span>
+            </button>
+          </div>
         </div>
 
         {message && (

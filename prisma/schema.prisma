@@ -139,6 +139,10 @@ model Media {
   altText   String   @default("")
   mimeType  String
   size      Int // バイト数
+  // 画像の使い方の分類(カテゴリーではなく用途)。
+  // "article": 記事ごとに個別に使う画像(アイキャッチ・記事内メディア。デフォルト)
+  // "setting": プロフィール画像やカテゴリーアイコンなど、サイト設定として標準的に使い回す画像
+  usageType String   @default("article")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

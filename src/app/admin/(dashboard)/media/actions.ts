@@ -18,8 +18,11 @@ export type MediaItem = {
   createdAt: string;
 };
 
-/** メディアライブラリ一覧画面用。使用状況(どの記事で使われているか)を含む。 */
+export type MediaUsageType = "article" | "setting";
+
+/** メディアライブラリ一覧画面用。使用状況(どの記事で使われているか)・用途分類を含む。 */
 export type MediaRow = MediaItem & {
+  usageType: MediaUsageType;
   isUsed: boolean;
   usedBy: { id: string; slug: string; title: string }[];
 };
@@ -140,6 +143,7 @@ export async function syncMediaFromR2() {
 const updateSchema = z.object({
   filename: z.string().trim().min(1, "ファイル名を入力してください").max(200),
   altText: z.string().trim().max(300).optional().default(""),
+  usageType: z.enum(["article", "setting"]).default("article"),
 });
 
 export type UpdateMediaResult = { status: "ok" } | { status: "error"; message: string };
@@ -155,6 +159,7 @@ export async function updateMedia(id: string, formData: FormData): Promise<Updat
   const parsed = updateSchema.safeParse({
     filename: formData.get("filename"),
     altText: formData.get("altText") ?? "",
+    usageType: formData.get("usageType") ?? "article",
   });
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues[0]?.message ?? "入力内容をご確認ください。" };

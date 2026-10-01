@@ -20,6 +20,7 @@ export default async function AdminMediaPage({ searchParams }: PageProps<"/admin
       mimeType: item.mimeType,
       size: item.size,
       createdAt: item.createdAt.toISOString(),
+      usageType: item.usageType === "setting" ? "setting" : "article",
       isUsed: usedBy.length > 0,
       usedBy,
     };
