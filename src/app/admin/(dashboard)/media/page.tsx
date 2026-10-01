@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { buildMediaUsageMap } from "@/lib/mediaUsage";
-import { syncMediaFromR2, uploadMedia, type MediaRow } from "./actions";
+import { backfillMediaAltText, syncMediaFromR2, uploadMedia, type MediaRow } from "./actions";
 import { MediaLibraryGrid } from "./MediaLibraryGrid";
 
 export default async function AdminMediaPage({ searchParams }: PageProps<"/admin/media">) {
-  const { error, imported } = await searchParams;
+  const { error, imported, altFilled } = await searchParams;
   const [media, usageMap] = await Promise.all([
     prisma.media.findMany({ orderBy: { createdAt: "desc" } }),
     buildMediaUsageMap(),
@@ -38,6 +38,13 @@ export default async function AdminMediaPage({ searchParams }: PageProps<"/admin
       {typeof imported === "string" && (
         <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-dark">
           {imported === "0" ? "新しく取り込む画像はありませんでした。" : `${imported}件の画像を取り込みました。`}
+        </p>
+      )}
+      {typeof altFilled === "string" && (
+        <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-dark">
+          {altFilled === "0"
+            ? "記事本文から取り込めるalt属性はありませんでした。"
+            : `${altFilled}件のalt属性を記事本文から取り込みました。`}
         </p>
       )}
 
@@ -74,6 +81,21 @@ export default async function AdminMediaPage({ searchParams }: PageProps<"/admin
           </button>
           <p className="text-[11px] text-foreground-muted">
             WordPress移行時にR2へ直接保存された画像をこのライブラリに登録します。
+          </p>
+        </form>
+
+        <form
+          action={backfillMediaAltText}
+          className="flex flex-col justify-center gap-1 rounded-2xl border border-dashed border-border p-4"
+        >
+          <button
+            type="submit"
+            className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:border-accent hover:text-accent-dark"
+          >
+            記事本文からalt属性を取り込む
+          </button>
+          <p className="text-[11px] text-foreground-muted">
+            記事本文の![alt](URL)記法からalt属性を取得し、未設定のメディアにのみ反映します。
           </p>
         </form>
       </div>

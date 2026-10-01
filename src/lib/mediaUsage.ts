@@ -53,3 +53,32 @@ export async function buildMediaUsageMap(): Promise<Map<string, MediaUsageArticl
 
   return usage;
 }
+
+const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
+
+/**
+ * 記事本文のMarkdown画像記法(![alt](url))からalt文字列を抽出し、
+ * 「画像URL → alt文字列」のマップを作る。リサイズ版URLに付いたaltは、
+ * 接尾辞を外した元URLにも(未設定なら)記録する。同じURLに複数のalt文字列が
+ * ある場合は最初に見つかったものを採用する。
+ */
+export async function buildMediaAltTextMap(): Promise<Map<string, string>> {
+  const articles = await prisma.article.findMany({ select: { contentMarkdown: true } });
+  const altMap = new Map<string, string>();
+
+  for (const article of articles) {
+    MARKDOWN_IMAGE_PATTERN.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = MARKDOWN_IMAGE_PATTERN.exec(article.contentMarkdown)) !== null) {
+      const alt = match[1].trim();
+      const url = match[2];
+      if (!alt) continue;
+
+      if (!altMap.has(url)) altMap.set(url, alt);
+      const original = normalizeToOriginalUrl(url);
+      if (original !== url && !altMap.has(original)) altMap.set(original, alt);
+    }
+  }
+
+  return altMap;
+}

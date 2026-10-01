@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { deleteFileFromR2, listAllR2Objects, getPublicUrl } from "@/lib/r2";
 import { saveUploadedFile } from "@/lib/storage";
+import { buildMediaAltTextMap } from "@/lib/mediaUsage";
 
 export type MediaItem = {
   id: string;
@@ -138,6 +139,39 @@ export async function syncMediaFromR2() {
 
   revalidatePath("/admin/media");
   redirect(`/admin/media?imported=${candidates.length}`);
+}
+
+/**
+ * 記事本文のMarkdown画像記法(![alt](url))からalt文字列を取り込み、
+ * alt属性が未設定のメディアにだけ反映する(既に手動で設定済みのものは上書きしない)。
+ * 何度実行しても安全。
+ */
+export async function backfillMediaAltText() {
+  const user = await getSessionUser();
+  if (!user) {
+    redirectWithError("セッションが切れました。再度ログインしてください。");
+    return;
+  }
+
+  const [altMap, emptyAltMedia] = await Promise.all([
+    buildMediaAltTextMap(),
+    prisma.media.findMany({ where: { altText: "" }, select: { id: true, url: true } }),
+  ]);
+
+  const updates = emptyAltMedia
+    .map((item) => ({ id: item.id, alt: altMap.get(item.url) }))
+    .filter((item): item is { id: string; alt: string } => Boolean(item.alt));
+
+  if (updates.length > 0) {
+    // 件数が多いと$transaction(逐次実行)はタイムアウトしうるため、並列更新にする。
+    // 1件ずつ独立した更新で全体の成否に依存関係はないため、トランザクションは不要。
+    await Promise.all(
+      updates.map((update) => prisma.media.update({ where: { id: update.id }, data: { altText: update.alt } }))
+    );
+  }
+
+  revalidatePath("/admin/media");
+  redirect(`/admin/media?altFilled=${updates.length}`);
 }
 
 const updateSchema = z.object({
