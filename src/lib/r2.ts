@@ -62,10 +62,14 @@ export type UploadedObject = {
 
 /**
  * ファイルをCloudflare R2にアップロードし、オブジェクトキーと公開URLを返す。
+ * WordPress時代と同様、年/月のフォルダに分けて保存する(例: media/2026/10/xxxx.jpg)。
  */
 export async function uploadFileToR2(file: File, subdir: string): Promise<UploadedObject> {
   const ext = path.extname(file.name) || guessExtension(file.type);
-  const key = `${subdir}/${randomUUID()}${ext}`;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const key = `${subdir}/${year}/${month}/${randomUUID()}${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type || "application/octet-stream";
 

@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { uploadFileToR2, deleteFileFromR2, listAllR2Objects, getPublicUrl } from "@/lib/r2";
+import { deleteFileFromR2, listAllR2Objects, getPublicUrl } from "@/lib/r2";
+import { saveUploadedFile } from "@/lib/storage";
 
 export type MediaItem = {
   id: string;
@@ -56,10 +57,7 @@ export async function uploadMedia(formData: FormData) {
   }
 
   for (const file of imageFiles) {
-    const { key, url, size, mimeType } = await uploadFileToR2(file, "media");
-    await prisma.media.create({
-      data: { key, url, filename: file.name, mimeType, size },
-    });
+    await saveUploadedFile(file, "media");
   }
 
   revalidatePath("/admin/media");
