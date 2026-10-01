@@ -4,7 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { saveUploadedFile } from "@/lib/storage";
+import { resolveImageField } from "@/lib/uploadField";
 
 const shortcodeSchema = z.object({
   name: z
@@ -19,11 +19,6 @@ const shortcodeSchema = z.object({
 
 function redirectWithError(message: string) {
   redirect(`/admin/shortcodes?error=${encodeURIComponent(message)}`);
-}
-
-function fileFromForm(formData: FormData, field: string) {
-  const file = formData.get(field);
-  return file instanceof File && file.size > 0 ? file : null;
 }
 
 function parseShortcodeForm(formData: FormData) {
@@ -41,8 +36,8 @@ export async function createShortcode(formData: FormData) {
     return;
   }
 
-  const iconFile = fileFromForm(formData, "icon");
-  if (!iconFile) {
+  const iconUrl = await resolveImageField(formData, "icon", "shortcodes");
+  if (!iconUrl) {
     redirectWithError("アイコン画像を選択してください。");
     return;
   }
@@ -53,7 +48,6 @@ export async function createShortcode(formData: FormData) {
     return;
   }
 
-  const iconUrl = await saveUploadedFile(iconFile, "shortcodes");
   await prisma.shortcode.create({ data: { ...parsed.data, iconUrl } });
   revalidatePath("/admin/shortcodes");
   revalidatePath("/", "layout");
@@ -72,8 +66,7 @@ export async function updateShortcode(id: string, formData: FormData) {
     return;
   }
 
-  const iconFile = fileFromForm(formData, "icon");
-  const iconUrl = iconFile ? await saveUploadedFile(iconFile, "shortcodes") : undefined;
+  const iconUrl = await resolveImageField(formData, "icon", "shortcodes");
 
   await prisma.shortcode.update({
     where: { id },

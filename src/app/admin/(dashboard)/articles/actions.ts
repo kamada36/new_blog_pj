@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { saveUploadedFile } from "@/lib/storage";
+import { resolveImageField } from "@/lib/uploadField";
 import { slugify } from "@/lib/slug";
 
 const articleSchema = z.object({
@@ -67,11 +67,7 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
     return { status: "error", message: "このスラッグは既に使用されています。" };
   }
 
-  let coverImageUrl: string | undefined;
-  const coverImageFile = formData.get("coverImage");
-  if (coverImageFile instanceof File && coverImageFile.size > 0) {
-    coverImageUrl = await saveUploadedFile(coverImageFile, "articles");
-  }
+  const coverImageUrl = await resolveImageField(formData, "coverImage", "articles");
 
   const existing = data.id ? await prisma.article.findUnique({ where: { id: data.id } }) : null;
   const publishedAt =

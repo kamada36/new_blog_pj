@@ -6,6 +6,7 @@ import { IconMug } from "@/components/icons/CafeIcons";
 const NAV_ITEMS = [
   { href: "/admin", label: "ダッシュボード" },
   { href: "/admin/articles", label: "記事" },
+  { href: "/admin/media", label: "メディア" },
   { href: "/admin/categories", label: "カテゴリー" },
   { href: "/admin/tags", label: "タグ" },
   { href: "/admin/shortcodes", label: "ショートコード" },

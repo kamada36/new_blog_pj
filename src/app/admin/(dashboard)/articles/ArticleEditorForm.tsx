@@ -9,7 +9,10 @@ import { saveArticle, type ArticleFormState } from "./actions";
 import { slugify } from "@/lib/slug";
 import { TagAutocompleteInput } from "@/components/admin/TagAutocompleteInput";
 import { ArticleBody } from "@/components/article/ArticleBody";
+import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
+import { ImagePickerField } from "@/components/admin/ImagePickerField";
 import type { ShortcodePreset } from "@/lib/shortcodes";
+import type { MediaItem } from "@/app/admin/(dashboard)/media/actions";
 
 const PREVIEW_STORAGE_KEY = "articlePreviewData";
 
@@ -82,8 +85,10 @@ export function ArticleEditorForm({
   const [metaDescriptionLength, setMetaDescriptionLength] = useState(values.metaDescription.length);
   const [metaKeywordsLength, setMetaKeywordsLength] = useState(values.metaKeywords.length);
   const [splitPreview, setSplitPreview] = useState(false);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const isDark = useSyncExternalStore(subscribeDarkModeChange, getDarkModeSnapshot, getDarkModeServerSnapshot);
 
+  const editorViewRef = useRef<EditorView | null>(null);
   const editorScrollElRef = useRef<HTMLElement | null>(null);
   const previewScrollElRef = useRef<HTMLDivElement | null>(null);
   // "editor"/"preview": プログラム側でスクロール位置を設定した直後であることを示すフラグ。
@@ -118,6 +123,22 @@ export function ArticleEditorForm({
     const previewEl = previewScrollElRef.current;
     if (!editorEl || !previewEl) return;
     syncScrollRatio(previewEl, editorEl, "preview");
+  }
+
+  function insertMediaAtCursor(item: MediaItem) {
+    const markdownImage = `![${item.altText || item.filename}](${item.url})`;
+    const view = editorViewRef.current;
+    if (view) {
+      const { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from, to, insert: markdownImage },
+        selection: { anchor: from + markdownImage.length },
+      });
+      view.focus();
+    } else {
+      setContent((prev) => (prev ? `${prev}\n${markdownImage}\n` : `${markdownImage}\n`));
+    }
+    setMediaPickerOpen(false);
   }
 
   function openPreviewInNewTab() {
@@ -212,21 +233,21 @@ export function ArticleEditorForm({
 
         <div>
           <label className="text-sm font-semibold">アイキャッチ画像</label>
-          <input
-            type="file"
-            name="coverImage"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) setCoverPreview(URL.createObjectURL(file));
-            }}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-xs"
-          />
-          {coverPreview && (
-            <div className="relative mt-2 aspect-[16/9] w-full max-w-xs overflow-hidden rounded-lg bg-surface-muted">
-              <Image src={coverPreview} alt="" fill className="object-cover" unoptimized />
-            </div>
-          )}
+          <div className="mt-1">
+            <ImagePickerField
+              name="coverImage"
+              layout="stack"
+              previewAspectClassName="aspect-[16/9]"
+              onSelect={(url) => setCoverPreview(url)}
+              fallback={
+                coverPreview ? (
+                  <div className="relative aspect-[16/9] w-full max-w-xs overflow-hidden rounded-lg bg-surface-muted">
+                    <Image src={coverPreview} alt="" fill className="object-cover" unoptimized />
+                  </div>
+                ) : null
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -237,6 +258,13 @@ export function ArticleEditorForm({
           <label className="text-sm font-semibold">本文（Markdown）</label>
           <div className="flex items-center gap-2">
             <span className="text-xs text-foreground-muted">{content.length}文字</span>
+            <button
+              type="button"
+              onClick={() => setMediaPickerOpen(true)}
+              className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+            >
+              画像を挿入
+            </button>
             <button
               type="button"
               onClick={() => setSplitPreview((prev) => !prev)}
@@ -262,6 +290,7 @@ export function ArticleEditorForm({
               extensions={[markdown(), EditorView.lineWrapping]}
               onChange={(value) => setContent(value)}
               onCreateEditor={(view) => {
+                editorViewRef.current = view;
                 editorScrollElRef.current = view.scrollDOM;
                 view.scrollDOM.addEventListener("scroll", handleEditorScroll);
               }}
@@ -324,6 +353,12 @@ export function ArticleEditorForm({
           </div>
         </div>
       </fieldset>
+
+      <MediaPickerModal
+        open={mediaPickerOpen}
+        onClose={() => setMediaPickerOpen(false)}
+        onSelect={insertMediaAtCursor}
+      />
 
       {state.status === "error" && <p className="text-sm text-red-600">{state.message}</p>}
 

@@ -1,37 +1,14 @@
 import "server-only";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
-
-const UPLOAD_ROOT = path.join(process.cwd(), "public", "uploads");
+import { prisma } from "@/lib/prisma";
+import { uploadFileToR2 } from "@/lib/r2";
 
 /**
- * Saves an uploaded file to the local filesystem under public/uploads.
- * Swap this implementation to target S3/Blob storage later without
- * touching call sites — they only depend on the returned public URL.
+ * アップロードされたファイルをCloudflare R2に保存し、メディアライブラリにも登録したうえで
+ * 公開URLを返す。呼び出し元(カバー画像・プロフィール画像・ヒーロー画像・ショートコードアイコン等)を
+ * 問わず、アップロードした画像はすべて自動的にメディアライブラリの一覧に反映される。
  */
 export async function saveUploadedFile(file: File, subdir: string): Promise<string> {
-  const dir = path.join(UPLOAD_ROOT, subdir);
-  await mkdir(dir, { recursive: true });
-
-  const ext = path.extname(file.name) || guessExtension(file.type);
-  const filename = `${randomUUID()}${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, filename), buffer);
-
-  return `/uploads/${subdir}/${filename}`;
-}
-
-function guessExtension(mimeType: string) {
-  switch (mimeType) {
-    case "image/png":
-      return ".png";
-    case "image/webp":
-      return ".webp";
-    case "image/gif":
-      return ".gif";
-    case "image/jpeg":
-    default:
-      return ".jpg";
-  }
+  const { key, url, size, mimeType } = await uploadFileToR2(file, subdir);
+  await prisma.media.create({ data: { key, url, filename: file.name, mimeType, size } });
+  return url;
 }

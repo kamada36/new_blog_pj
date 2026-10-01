@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { saveUploadedFile } from "@/lib/storage";
+import { resolveImageField } from "@/lib/uploadField";
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -37,11 +37,7 @@ export async function updateProfile(formData: FormData) {
     return;
   }
 
-  let avatarUrl: string | undefined;
-  const avatarFile = formData.get("avatar");
-  if (avatarFile instanceof File && avatarFile.size > 0) {
-    avatarUrl = await saveUploadedFile(avatarFile, "profile");
-  }
+  const avatarUrl = await resolveImageField(formData, "avatar", "profile");
 
   await prisma.user.update({
     where: { id: user!.id },
