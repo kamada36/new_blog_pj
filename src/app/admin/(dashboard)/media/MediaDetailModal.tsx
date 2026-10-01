@@ -60,7 +60,7 @@ export function MediaDetailModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-2xl bg-surface p-5"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-2xl bg-surface p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -70,7 +70,7 @@ export function MediaDetailModal({
           </button>
         </div>
 
-        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-surface-muted">
+        <div className="relative h-64 w-full shrink-0 overflow-hidden rounded-lg bg-surface-muted">
           <Image src={item.url} alt={item.altText} fill className="object-contain" unoptimized />
         </div>
 
@@ -130,12 +130,12 @@ export function MediaDetailModal({
           </button>
         </div>
 
-        <div className="border-t border-border pt-3">
+        <div className="min-h-0 shrink-0 border-t border-border pt-3">
           <h3 className="text-xs font-semibold text-foreground-muted">使用されている記事({item.usedBy.length}件)</h3>
           {item.usedBy.length === 0 ? (
             <p className="mt-2 text-sm text-foreground-muted">どの記事でも使用されていません。</p>
           ) : (
-            <ul className="mt-2 flex flex-col gap-1">
+            <ul className="mt-2 flex max-h-28 flex-col gap-1 overflow-y-auto">
               {item.usedBy.map((article) => (
                 <li key={article.id}>
                   <Link
