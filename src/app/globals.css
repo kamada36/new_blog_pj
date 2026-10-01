@@ -1,16 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf6ef;
+  /* ライトモードは #fffafa(わずかに赤みを帯びた白)を基調に、surface / border / 文字色も同じ色相でそろえる */
+  --background: #fffafa;
   --surface: #ffffff;
-  --surface-muted: #f3ead9;
-  --foreground: #2e2118;
-  --foreground-muted: #6f5f4f;
-  --border: #e8dcc6;
+  --surface-muted: #f8eeec;
+  --foreground: #2e2220;
+  --foreground-muted: #6f5c58;
+  --border: #ecdcd8;
   --accent: #c07f2c;
   --accent-dark: #99631f;
-  --accent-soft: #f1dcb8;
-  --accent-contrast: #fffaf1;
+  --accent-soft: #f5e1cc;
+  --accent-contrast: #fffafa;
 }
 
 @theme inline {
