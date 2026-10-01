@@ -4,29 +4,40 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FaCheck } from "react-icons/fa6";
-import { bulkDeleteMedia, deleteMedia, type MediaRow } from "./actions";
+import { bulkDeleteMedia, deleteMedia, type MediaRow, type MediaUsageType } from "./actions";
 import { MediaDetailModal } from "./MediaDetailModal";
 
 type UsageFilter = "all" | "used" | "unused";
+type TypeFilter = "all" | MediaUsageType;
 
-const FILTER_OPTIONS: { value: UsageFilter; label: string }[] = [
+const USAGE_FILTER_OPTIONS: { value: UsageFilter; label: string }[] = [
   { value: "all", label: "すべて" },
   { value: "used", label: "使用中" },
   { value: "unused", label: "未使用" },
+];
+
+const TYPE_FILTER_OPTIONS: { value: TypeFilter; label: string }[] = [
+  { value: "all", label: "すべて" },
+  { value: "article", label: "記事用" },
+  { value: "setting", label: "設定用" },
 ];
 
 export function MediaLibraryGrid({ media }: { media: MediaRow[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detailItem, setDetailItem] = useState<MediaRow | null>(null);
-  const [filter, setFilter] = useState<UsageFilter>("all");
+  const [usageFilter, setUsageFilter] = useState<UsageFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [isPending, startTransition] = useTransition();
 
   const filteredMedia = useMemo(() => {
-    if (filter === "used") return media.filter((item) => item.isUsed);
-    if (filter === "unused") return media.filter((item) => !item.isUsed);
-    return media;
-  }, [media, filter]);
+    return media.filter((item) => {
+      if (usageFilter === "used" && !item.isUsed) return false;
+      if (usageFilter === "unused" && item.isUsed) return false;
+      if (typeFilter !== "all" && item.usageType !== typeFilter) return false;
+      return true;
+    });
+  }, [media, usageFilter, typeFilter]);
 
   function toggleOne(id: string) {
     setSelected((prev) => {
@@ -65,14 +76,15 @@ export function MediaLibraryGrid({ media }: { media: MediaRow[] }) {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {FILTER_OPTIONS.map((option) => (
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-foreground-muted">使用状況:</span>
+        {USAGE_FILTER_OPTIONS.map((option) => (
           <button
             key={option.value}
             type="button"
-            onClick={() => setFilter(option.value)}
+            onClick={() => setUsageFilter(option.value)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              filter === option.value
+              usageFilter === option.value
                 ? "border-accent bg-accent-soft text-accent-dark"
                 : "border-border text-foreground-muted hover:border-accent hover:text-accent-dark"
             }`}
@@ -81,6 +93,24 @@ export function MediaLibraryGrid({ media }: { media: MediaRow[] }) {
           </button>
         ))}
         <span className="text-xs text-foreground-muted">{filteredMedia.length}件</span>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-foreground-muted">用途:</span>
+        {TYPE_FILTER_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setTypeFilter(option.value)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+              typeFilter === option.value
+                ? "border-accent bg-accent-soft text-accent-dark"
+                : "border-border text-foreground-muted hover:border-accent hover:text-accent-dark"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
       {selected.size > 0 && (
@@ -93,6 +123,13 @@ export function MediaLibraryGrid({ media }: { media: MediaRow[] }) {
             className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             削除
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-accent hover:text-accent-dark"
+          >
+            選択解除
           </button>
         </div>
       )}
