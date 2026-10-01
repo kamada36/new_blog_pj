@@ -4,6 +4,14 @@ import { prisma } from "@/lib/prisma";
 export type MediaUsageArticle = { id: string; slug: string; title: string };
 
 const URL_PATTERN = /https?:\/\/[^\s"')\]]+/g;
+// WordPressが自動生成するリサイズ版URLの末尾("-幅x高さ.拡張子")。
+// メディアライブラリにはオリジナル画像のみを取り込んでいるため、記事側がリサイズ版URLを
+// 直接埋め込んでいる場合でも、この接尾辞を外した元URLとして使用状況を記録する。
+const SIZE_VARIANT_SUFFIX = /-\d{1,5}x\d{1,5}(\.\w+)$/i;
+
+function normalizeToOriginalUrl(url: string): string {
+  return url.replace(SIZE_VARIANT_SUFFIX, "$1");
+}
 
 function recordUsage(map: Map<string, MediaUsageArticle[]>, url: string | null | undefined, article: MediaUsageArticle) {
   if (!url) return;
@@ -13,6 +21,9 @@ function recordUsage(map: Map<string, MediaUsageArticle[]>, url: string | null |
   } else {
     map.set(url, [article]);
   }
+
+  const original = normalizeToOriginalUrl(url);
+  if (original !== url) recordUsage(map, original, article);
 }
 
 /**
