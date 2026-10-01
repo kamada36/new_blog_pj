@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { uploadFileToR2, deleteFileFromR2 } from "@/lib/r2";
+import { uploadFileToR2, deleteFileFromR2, listAllR2Objects, getPublicUrl } from "@/lib/r2";
 
 export type MediaItem = {
   id: string;
@@ -63,6 +63,74 @@ export async function uploadMedia(formData: FormData) {
   }
 
   revalidatePath("/admin/media");
+}
+
+// WordPress移行スクリプトがR2直下の年フォルダ(例: 2024/06/xxx.jpg)へ保存した画像。
+// アプリ自身のアップロードは"media/"等の非数字プレフィックスを使うため、このパターンとは重ならない。
+const WP_MIGRATED_PREFIX = /^\d{4}\//;
+// WordPressが自動生成するリサイズ済み派生画像("-幅x高さ.拡張子"で終わるもの)。元画像のみ取り込む。
+const WP_SIZE_VARIANT = /-\d{1,5}x\d{1,5}\.(jpe?g|png|gif|webp)$/i;
+const IMAGE_EXTENSION = /\.(jpe?g|png|gif|webp|svg)$/i;
+
+function guessMimeTypeFromKey(key: string): string {
+  const ext = key.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    case "jpg":
+    case "jpeg":
+    default:
+      return "image/jpeg";
+  }
+}
+
+/**
+ * WordPress移行時にR2へ直接保存された画像(DB未登録分)をMediaテーブルへ取り込む。
+ * 既に登録済みのキーはスキップするため、何度実行しても安全。
+ */
+export async function syncMediaFromR2() {
+  const user = await getSessionUser();
+  if (!user) {
+    redirectWithError("セッションが切れました。再度ログインしてください。");
+    return;
+  }
+
+  const [objects, existing] = await Promise.all([
+    listAllR2Objects(),
+    prisma.media.findMany({ select: { key: true } }),
+  ]);
+  const existingKeys = new Set(existing.map((m) => m.key));
+
+  const candidates = objects.filter(
+    (obj) =>
+      WP_MIGRATED_PREFIX.test(obj.key) &&
+      IMAGE_EXTENSION.test(obj.key) &&
+      !WP_SIZE_VARIANT.test(obj.key) &&
+      !existingKeys.has(obj.key)
+  );
+
+  if (candidates.length > 0) {
+    await prisma.media.createMany({
+      data: candidates.map((obj) => ({
+        key: obj.key,
+        url: getPublicUrl(obj.key),
+        filename: obj.key.split("/").pop() ?? obj.key,
+        mimeType: guessMimeTypeFromKey(obj.key),
+        size: obj.size,
+        ...(obj.lastModified ? { createdAt: obj.lastModified } : {}),
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  revalidatePath("/admin/media");
+  redirect(`/admin/media?imported=${candidates.length}`);
 }
 
 const updateSchema = z.object({

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
-import { deleteMedia, updateMedia, uploadMedia } from "./actions";
+import { deleteMedia, syncMediaFromR2, updateMedia, uploadMedia } from "./actions";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes}B`;
@@ -10,7 +10,7 @@ function formatBytes(bytes: number) {
 }
 
 export default async function AdminMediaPage({ searchParams }: PageProps<"/admin/media">) {
-  const { error } = await searchParams;
+  const { error, imported } = await searchParams;
   const media = await prisma.media.findMany({ orderBy: { createdAt: "desc" } });
 
   return (
@@ -22,26 +22,48 @@ export default async function AdminMediaPage({ searchParams }: PageProps<"/admin
       {typeof error === "string" && (
         <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       )}
+      {typeof imported === "string" && (
+        <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-dark">
+          {imported === "0" ? "新しく取り込む画像はありませんでした。" : `${imported}件の画像を取り込みました。`}
+        </p>
+      )}
 
-      <form
-        action={uploadMedia}
-        className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border p-4"
-      >
-        <input
-          type="file"
-          name="files"
-          accept="image/*"
-          multiple
-          required
-          className="min-w-[220px] flex-1 text-xs outline-none file:mr-2 file:rounded-full file:border-0 file:bg-accent-soft file:px-2 file:py-1 file:text-xs"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+      <div className="mt-6 flex flex-wrap gap-3">
+        <form
+          action={uploadMedia}
+          className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border p-4"
         >
-          アップロード
-        </button>
-      </form>
+          <input
+            type="file"
+            name="files"
+            accept="image/*"
+            multiple
+            required
+            className="min-w-[220px] flex-1 text-xs outline-none file:mr-2 file:rounded-full file:border-0 file:bg-accent-soft file:px-2 file:py-1 file:text-xs"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+          >
+            アップロード
+          </button>
+        </form>
+
+        <form
+          action={syncMediaFromR2}
+          className="flex flex-col justify-center gap-1 rounded-2xl border border-dashed border-border p-4"
+        >
+          <button
+            type="submit"
+            className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:border-accent hover:text-accent-dark"
+          >
+            R2から既存画像を取り込む
+          </button>
+          <p className="text-[11px] text-foreground-muted">
+            WordPress移行時にR2へ直接保存された画像をこのライブラリに登録します。
+          </p>
+        </form>
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {media.map((item) => (

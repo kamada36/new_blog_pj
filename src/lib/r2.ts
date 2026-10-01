@@ -1,5 +1,5 @@
 import "server-only";
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import path from "path";
 
@@ -31,7 +31,7 @@ function getBucketName(): string {
   return bucket;
 }
 
-function getPublicUrl(key: string): string {
+export function getPublicUrl(key: string): string {
   const base = process.env.R2_PUBLIC_URL;
   if (!base) throw new Error("R2_PUBLIC_URL が設定されていません。");
   return `${base.replace(/\/+$/, "")}/${key}`;
@@ -83,4 +83,36 @@ export async function uploadFileToR2(file: File, subdir: string): Promise<Upload
 
 export async function deleteFileFromR2(key: string): Promise<void> {
   await getClient().send(new DeleteObjectCommand({ Bucket: getBucketName(), Key: key }));
+}
+
+export type R2Object = {
+  key: string;
+  size: number;
+  lastModified?: Date;
+};
+
+/**
+ * バケット内の全オブジェクトを一覧する(1000件ずつページネーション)。
+ * 既にR2へ直接アップロードされている画像(WordPress移行分等)をMediaテーブルへ
+ * 取り込む際の一覧取得に使う。
+ */
+export async function listAllR2Objects(): Promise<R2Object[]> {
+  const client = getClient();
+  const bucket = getBucketName();
+  const objects: R2Object[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, ContinuationToken: continuationToken, MaxKeys: 1000 })
+    );
+    for (const obj of res.Contents ?? []) {
+      if (obj.Key && typeof obj.Size === "number") {
+        objects.push({ key: obj.Key, size: obj.Size, lastModified: obj.LastModified });
+      }
+    }
+    continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return objects;
 }
