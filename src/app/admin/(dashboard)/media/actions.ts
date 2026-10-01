@@ -18,6 +18,12 @@ export type MediaItem = {
   createdAt: string;
 };
 
+/** メディアライブラリ一覧画面用。使用状況(どの記事で使われているか)を含む。 */
+export type MediaRow = MediaItem & {
+  isUsed: boolean;
+  usedBy: { id: string; slug: string; title: string }[];
+};
+
 function redirectWithError(message: string) {
   redirect(`/admin/media?error=${encodeURIComponent(message)}`);
 }
@@ -136,21 +142,27 @@ const updateSchema = z.object({
   altText: z.string().trim().max(300).optional().default(""),
 });
 
-export async function updateMedia(id: string, formData: FormData) {
+export type UpdateMediaResult = { status: "ok" } | { status: "error"; message: string };
+
+/**
+ * メディア詳細モーダルから呼び出される。一覧側には編集UIを置かないため、
+ * 呼び出し元はこのモーダルのみ(ネイティブなform送信ではなくJSから直接呼ばれる)。
+ */
+export async function updateMedia(id: string, formData: FormData): Promise<UpdateMediaResult> {
   const user = await getSessionUser();
-  if (!user) return;
+  if (!user) return { status: "error", message: "セッションが切れました。再度ログインしてください。" };
 
   const parsed = updateSchema.safeParse({
     filename: formData.get("filename"),
     altText: formData.get("altText") ?? "",
   });
   if (!parsed.success) {
-    redirectWithError(parsed.error.issues[0]?.message ?? "入力内容をご確認ください。");
-    return;
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "入力内容をご確認ください。" };
   }
 
   await prisma.media.update({ where: { id }, data: parsed.data });
   revalidatePath("/admin/media");
+  return { status: "ok" };
 }
 
 export async function deleteMedia(id: string) {
@@ -166,5 +178,15 @@ export async function deleteMedia(id: string) {
   } catch {
     // R2側の削除に失敗してもDBレコードは消えている。孤児オブジェクトはそのままにする。
   }
+  revalidatePath("/admin/media");
+}
+
+export async function bulkDeleteMedia(ids: string[]) {
+  const user = await getSessionUser();
+  if (!user || ids.length === 0) return;
+
+  const items = await prisma.media.findMany({ where: { id: { in: ids } } });
+  await prisma.media.deleteMany({ where: { id: { in: ids } } });
+  await Promise.allSettled(items.map((item) => deleteFileFromR2(item.key)));
   revalidatePath("/admin/media");
 }
