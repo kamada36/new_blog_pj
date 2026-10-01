@@ -130,6 +130,21 @@ model Page {
   updatedAt       DateTime @updatedAt
 }
 
+// メディアライブラリ(R2にアップロードした画像の管理)
+model Media {
+  id        String   @id @default(cuid())
+  key       String   @unique // R2オブジェクトキー(削除時に使用)
+  url       String // 公開URL
+  filename  String // 表示用ファイル名(編集可能。アップロード時は元ファイル名)
+  altText   String   @default("")
+  mimeType  String
+  size      Int // バイト数
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 // お問い合わせフォームの送信内容
 model ContactMessage {
   id        String    @id @default(cuid())
