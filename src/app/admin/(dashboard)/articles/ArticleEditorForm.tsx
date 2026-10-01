@@ -10,6 +10,7 @@ import { slugify } from "@/lib/slug";
 import { TagAutocompleteInput } from "@/components/admin/TagAutocompleteInput";
 import { ArticleBody } from "@/components/article/ArticleBody";
 import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
+import { ImagePickerField } from "@/components/admin/ImagePickerField";
 import type { ShortcodePreset } from "@/lib/shortcodes";
 import type { MediaItem } from "@/app/admin/(dashboard)/media/actions";
 
@@ -232,21 +233,21 @@ export function ArticleEditorForm({
 
         <div>
           <label className="text-sm font-semibold">アイキャッチ画像</label>
-          <input
-            type="file"
-            name="coverImage"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) setCoverPreview(URL.createObjectURL(file));
-            }}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-xs"
-          />
-          {coverPreview && (
-            <div className="relative mt-2 aspect-[16/9] w-full max-w-xs overflow-hidden rounded-lg bg-surface-muted">
-              <Image src={coverPreview} alt="" fill className="object-cover" unoptimized />
-            </div>
-          )}
+          <div className="mt-1">
+            <ImagePickerField
+              name="coverImage"
+              layout="stack"
+              previewAspectClassName="aspect-[16/9]"
+              onSelect={(url) => setCoverPreview(url)}
+              fallback={
+                coverPreview ? (
+                  <div className="relative aspect-[16/9] w-full max-w-xs overflow-hidden rounded-lg bg-surface-muted">
+                    <Image src={coverPreview} alt="" fill className="object-cover" unoptimized />
+                  </div>
+                ) : null
+              }
+            />
+          </div>
         </div>
       </div>
 

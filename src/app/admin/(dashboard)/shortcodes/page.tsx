@@ -1,7 +1,14 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
+import { ImagePickerField } from "@/components/admin/ImagePickerField";
 import { createShortcode, deleteShortcode, updateShortcode } from "./actions";
+
+const ICON_PREVIEW_CLASS = "h-12 w-12 shrink-0 rounded-full border border-border object-cover";
+
+function iconPreview(url: string) {
+  return <Image src={url} alt="" width={48} height={48} className={ICON_PREVIEW_CLASS} unoptimized />;
+}
 
 export default async function AdminShortcodesPage({ searchParams }: PageProps<"/admin/shortcodes">) {
   const { error } = await searchParams;
@@ -25,13 +32,6 @@ export default async function AdminShortcodesPage({ searchParams }: PageProps<"/
             action={updateShortcode.bind(null, shortcode.id)}
             className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4"
           >
-            <Image
-              src={shortcode.iconUrl}
-              alt=""
-              width={48}
-              height={48}
-              className="h-12 w-12 shrink-0 rounded-full border border-border object-cover"
-            />
             <input
               name="name"
               defaultValue={shortcode.name}
@@ -53,11 +53,10 @@ export default async function AdminShortcodesPage({ searchParams }: PageProps<"/
               placeholder="デフォルトコメント"
               className="min-w-[160px] flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
             />
-            <input
-              type="file"
+            <ImagePickerField
               name="icon"
-              accept="image/*"
-              className="w-52 text-xs outline-none file:mr-2 file:rounded-full file:border-0 file:bg-accent-soft file:px-2 file:py-1 file:text-xs"
+              previewClassName={ICON_PREVIEW_CLASS}
+              fallback={iconPreview(shortcode.iconUrl)}
             />
             <div className="flex gap-3">
               <button type="submit" className="text-sm font-semibold text-accent-dark hover:underline">
@@ -101,12 +100,14 @@ export default async function AdminShortcodesPage({ searchParams }: PageProps<"/
           placeholder="デフォルトコメント"
           className="min-w-[160px] flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
         />
-        <input
-          type="file"
+        <ImagePickerField
           name="icon"
-          accept="image/*"
-          required
-          className="w-52 text-xs outline-none file:mr-2 file:rounded-full file:border-0 file:bg-accent-soft file:px-2 file:py-1 file:text-xs"
+          previewClassName={ICON_PREVIEW_CLASS}
+          fallback={
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-foreground-muted">
+              未選択
+            </div>
+          }
         />
         <button
           type="submit"

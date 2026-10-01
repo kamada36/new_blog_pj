@@ -1,6 +1,13 @@
 import Image from "next/image";
 import { getSiteSetting } from "@/lib/queries";
+import { ImagePickerField } from "@/components/admin/ImagePickerField";
 import { updateSiteSetting, updateSponsorSlots, updateHeroAssets } from "./actions";
+
+const HERO_PREVIEW_CLASS = "h-16 w-16 rounded-lg border border-border object-contain bg-surface-muted";
+
+function heroPreview(url: string) {
+  return <Image src={url} alt="" width={64} height={64} className={HERO_PREVIEW_CLASS} unoptimized />;
+}
 
 export default async function AdminSettingsPage({ searchParams }: PageProps<"/admin/settings">) {
   const { status, error } = await searchParams;
@@ -175,25 +182,19 @@ function HeroImageField({
     <div>
       <label className="text-sm font-semibold">{label}</label>
       <p className="mt-0.5 text-xs text-foreground-muted">{hint}</p>
-      <div className="mt-2 flex items-center gap-3">
-        {currentUrl ? (
-          <Image
-            src={currentUrl}
-            alt={label}
-            width={64}
-            height={64}
-            className="h-16 w-16 rounded-lg border border-border object-contain bg-surface-muted"
-          />
-        ) : (
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-[10px] text-foreground-muted">
-            未設定
-          </div>
-        )}
-        <input
-          type="file"
+      <div className="mt-2">
+        <ImagePickerField
           name={name}
-          accept="image/*"
-          className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-xs"
+          previewClassName={HERO_PREVIEW_CLASS}
+          fallback={
+            currentUrl ? (
+              heroPreview(currentUrl)
+            ) : (
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-[10px] text-foreground-muted">
+                未設定
+              </div>
+            )
+          }
         />
       </div>
     </div>

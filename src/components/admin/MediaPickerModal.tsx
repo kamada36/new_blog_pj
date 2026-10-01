@@ -46,7 +46,7 @@ export function MediaPickerModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl bg-surface p-5"
+        className="flex h-[85vh] w-full max-w-5xl flex-col rounded-2xl bg-surface p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -80,29 +80,34 @@ export function MediaPickerModal({
           </button>
         </form>
 
-        <div className="mt-4 grid flex-1 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4">
-          {loading && <p className="col-span-full text-sm text-foreground-muted">読み込み中...</p>}
-          {!loading && items.length === 0 && (
-            <p className="col-span-full text-sm text-foreground-muted">まだメディアがありません。</p>
-          )}
-          {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelect(item)}
-              title={item.filename}
-              className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted"
-            >
-              <Image
-                src={item.url}
-                alt={item.altText}
-                fill
-                sizes="150px"
-                className="object-cover transition-transform group-hover:scale-105"
-                unoptimized
-              />
-            </button>
-          ))}
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+            {loading && <p className="col-span-full text-sm text-foreground-muted">読み込み中...</p>}
+            {!loading && items.length === 0 && (
+              <p className="col-span-full text-sm text-foreground-muted">まだメディアがありません。</p>
+            )}
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item)}
+                title={item.filename}
+                className="group flex flex-col gap-1 rounded-lg border border-border bg-surface-muted p-1 text-left hover:border-accent"
+              >
+                <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                  <Image
+                    src={item.url}
+                    alt={item.altText}
+                    fill
+                    sizes="120px"
+                    className="object-cover transition-transform group-hover:scale-105"
+                    unoptimized
+                  />
+                </div>
+                <span className="line-clamp-1 text-[10px] text-foreground-muted">{item.filename}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>,
