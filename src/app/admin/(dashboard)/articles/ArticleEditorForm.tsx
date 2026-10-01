@@ -237,6 +237,7 @@ export function ArticleEditorForm({
             <ImagePickerField
               name="coverImage"
               layout="stack"
+              usageTypeFilter="article"
               previewAspectClassName="aspect-[16/9]"
               onSelect={(url) => setCoverPreview(url)}
               fallback={
@@ -358,6 +359,7 @@ export function ArticleEditorForm({
         open={mediaPickerOpen}
         onClose={() => setMediaPickerOpen(false)}
         onSelect={insertMediaAtCursor}
+        usageTypeFilter="article"
       />
 
       {state.status === "error" && <p className="text-sm text-red-600">{state.message}</p>}

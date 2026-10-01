@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { getSiteSetting } from "@/lib/queries";
 import { ImagePickerField } from "@/components/admin/ImagePickerField";
-import { updateSiteSetting, updateSponsorSlots, updateHeroAssets } from "./actions";
+import { updateSiteSetting, updateSponsorSlots, updateHeroAssets, updateResident } from "./actions";
 
 const HERO_PREVIEW_CLASS = "h-16 w-16 rounded-lg border border-border object-contain bg-surface-muted";
 
@@ -163,6 +163,67 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           </button>
         </form>
       </div>
+
+      <div className="mt-10 max-w-lg rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-base font-bold">サイドバーウィジェット「サイトの住人」</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          サイドバーに表示されるキャラクターの名前・紹介文・アイコンを編集できます。
+        </p>
+
+        <form action={updateResident} className="mt-4 flex flex-col gap-4">
+          <div>
+            <label className="text-sm font-semibold">アイコン</label>
+            <div className="mt-2">
+              <ImagePickerField
+                name="residentAvatar"
+                usageTypeFilter="setting"
+                previewClassName="h-14 w-14 rounded-full object-cover"
+                fallback={
+                  setting.residentAvatarUrl ? (
+                    <Image
+                      src={setting.residentAvatarUrl}
+                      alt=""
+                      width={56}
+                      height={56}
+                      className="h-14 w-14 rounded-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-foreground-muted">
+                      未設定
+                    </div>
+                  )
+                }
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-semibold">名前</label>
+            <input
+              name="residentName"
+              defaultValue={setting.residentName}
+              required
+              className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-semibold">紹介文</label>
+            <textarea
+              name="residentBio"
+              defaultValue={setting.residentBio}
+              rows={3}
+              required
+              className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <button
+            type="submit"
+            className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+          >
+            保存する
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -185,6 +246,7 @@ function HeroImageField({
       <div className="mt-2">
         <ImagePickerField
           name={name}
+          usageTypeFilter="setting"
           previewClassName={HERO_PREVIEW_CLASS}
           fallback={
             currentUrl ? (

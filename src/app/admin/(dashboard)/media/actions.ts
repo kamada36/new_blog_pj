@@ -34,13 +34,17 @@ function redirectWithError(message: string) {
 
 /**
  * メディア一覧を取得する。記事編集画面のメディア選択モーダルからも
- * クライアントコンポーネント経由で直接呼び出される。
+ * クライアントコンポーネント経由で直接呼び出される。usageTypeを指定すると、
+ * その用途(記事用/設定用)のメディアのみに絞り込む。
  */
-export async function listMedia(): Promise<MediaItem[]> {
+export async function listMedia(usageType?: MediaUsageType): Promise<MediaItem[]> {
   const user = await getSessionUser();
   if (!user) return [];
 
-  const items = await prisma.media.findMany({ orderBy: { createdAt: "desc" } });
+  const items = await prisma.media.findMany({
+    where: usageType ? { usageType } : undefined,
+    orderBy: { createdAt: "desc" },
+  });
   return items.map((item) => ({
     id: item.id,
     url: item.url,
@@ -52,7 +56,13 @@ export async function listMedia(): Promise<MediaItem[]> {
   }));
 }
 
-export async function uploadMedia(formData: FormData) {
+/**
+ * usageTypeを指定すると、アップロードした画像をその用途で登録する
+ * (選択モーダルを「設定用」に絞って開いている最中にアップロードした画像が、
+ * 直後の一覧に表示されないままにならないようにするため)。省略時はMediaモデルの
+ * デフォルト("article")になる。
+ */
+export async function uploadMedia(formData: FormData, usageType?: MediaUsageType) {
   const user = await getSessionUser();
   if (!user) {
     redirectWithError("セッションが切れました。再度ログインしてください。");
@@ -67,7 +77,7 @@ export async function uploadMedia(formData: FormData) {
   }
 
   for (const file of imageFiles) {
-    await saveUploadedFile(file, "media");
+    await saveUploadedFile(file, "media", usageType);
   }
 
   revalidatePath("/admin/media");

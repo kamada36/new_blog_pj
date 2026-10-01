@@ -89,14 +89,22 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="font-display text-center text-base font-bold text-foreground-muted">サイトの住人</h2>
         <div className="mt-3 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-            <IconCap className="h-6 w-6 text-accent-dark" />
-          </div>
-          <p className="font-display font-bold">アイコ</p>
+          {siteSetting.residentAvatarUrl ? (
+            <Image
+              src={siteSetting.residentAvatarUrl}
+              alt={siteSetting.residentName}
+              width={56}
+              height={56}
+              className="h-14 w-14 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+              <IconCap className="h-6 w-6 text-accent-dark" />
+            </div>
+          )}
+          <p className="font-display font-bold">{siteSetting.residentName}</p>
         </div>
-        <p className="mt-3 text-center text-sm leading-relaxed text-foreground-muted">
-          プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。
-        </p>
+        <p className="mt-3 text-center text-sm leading-relaxed text-foreground-muted">{siteSetting.residentBio}</p>
       </section>
 
       {siteSetting.sponsorSidebarEmbed && (

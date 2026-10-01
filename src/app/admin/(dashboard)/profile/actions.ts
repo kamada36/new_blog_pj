@@ -37,7 +37,7 @@ export async function updateProfile(formData: FormData) {
     return;
   }
 
-  const avatarUrl = await resolveImageField(formData, "avatar", "profile");
+  const avatarUrl = await resolveImageField(formData, "avatar", "profile", "setting");
 
   await prisma.user.update({
     where: { id: user!.id },

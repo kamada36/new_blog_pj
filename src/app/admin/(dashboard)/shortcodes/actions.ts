@@ -36,7 +36,7 @@ export async function createShortcode(formData: FormData) {
     return;
   }
 
-  const iconUrl = await resolveImageField(formData, "icon", "shortcodes");
+  const iconUrl = await resolveImageField(formData, "icon", "shortcodes", "setting");
   if (!iconUrl) {
     redirectWithError("アイコン画像を選択してください。");
     return;
@@ -66,7 +66,7 @@ export async function updateShortcode(id: string, formData: FormData) {
     return;
   }
 
-  const iconUrl = await resolveImageField(formData, "icon", "shortcodes");
+  const iconUrl = await resolveImageField(formData, "icon", "shortcodes", "setting");
 
   await prisma.shortcode.update({
     where: { id },

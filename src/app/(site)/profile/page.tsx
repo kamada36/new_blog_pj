@@ -4,19 +4,25 @@ import Image from "next/image";
 import { Container } from "@/components/layout/Container";
 import { ArticleBody } from "@/components/article/ArticleBody";
 import { IconMug } from "@/components/icons/CafeIcons";
-import { getPrimaryAuthor } from "@/lib/queries";
+import { getPrimaryAuthor, getPageBySlug, getShortcodes } from "@/lib/queries";
+
+const PROFILE_PAGE_SLUG = "profile";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const author = await getPrimaryAuthor();
+  const [author, page] = await Promise.all([getPrimaryAuthor(), getPageBySlug(PROFILE_PAGE_SLUG)]);
   if (!author) return {};
   return {
-    title: "プロフィール",
-    description: `${author.name}のプロフィールです。`,
+    title: page?.metaTitle || "プロフィール",
+    description: page?.metaDescription || `${author.name}のプロフィールです。`,
   };
 }
 
 export default async function ProfilePage() {
-  const author = await getPrimaryAuthor();
+  const [author, page, shortcodes] = await Promise.all([
+    getPrimaryAuthor(),
+    getPageBySlug(PROFILE_PAGE_SLUG),
+    getShortcodes(),
+  ]);
   if (!author) notFound();
 
   return (
@@ -61,7 +67,7 @@ export default async function ProfilePage() {
       </div>
 
       <div className="mt-10">
-        <ArticleBody markdown={author.bio} />
+        <ArticleBody markdown={page?.contentMarkdown || author.bio} shortcodes={shortcodes} />
       </div>
     </Container>
   );

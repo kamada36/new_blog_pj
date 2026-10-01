@@ -67,7 +67,7 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
     return { status: "error", message: "このスラッグは既に使用されています。" };
   }
 
-  const coverImageUrl = await resolveImageField(formData, "coverImage", "articles");
+  const coverImageUrl = await resolveImageField(formData, "coverImage", "articles", "article");
 
   const existing = data.id ? await prisma.article.findUnique({ where: { id: data.id } }) : null;
   const publishedAt =

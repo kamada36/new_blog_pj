@@ -62,11 +62,44 @@ export async function updateSponsorSlots(formData: FormData) {
   redirect("/admin/settings?status=success");
 }
 
+const residentSchema = z.object({
+  residentName: z.string().trim().min(1, "名前を入力してください").max(30),
+  residentBio: z.string().trim().min(1, "紹介文を入力してください").max(300),
+});
+
+export async function updateResident(formData: FormData) {
+  const parsed = residentSchema.safeParse({
+    residentName: formData.get("residentName"),
+    residentBio: formData.get("residentBio"),
+  });
+
+  if (!parsed.success) {
+    redirect(`/admin/settings?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "入力内容をご確認ください。")}`);
+    return;
+  }
+
+  const residentAvatarUrl = await resolveImageField(formData, "residentAvatar", "settings", "setting");
+
+  const data = {
+    ...parsed.data,
+    ...(residentAvatarUrl ? { residentAvatarUrl } : {}),
+  };
+
+  await prisma.siteSetting.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
+  });
+
+  revalidatePath("/", "layout");
+  redirect("/admin/settings?status=success");
+}
+
 export async function updateHeroAssets(formData: FormData) {
   const [heroBackgroundUrl, heroCharacterResilientUrl, heroCharacterAikoUrl] = await Promise.all([
-    resolveImageField(formData, "heroBackground", "hero"),
-    resolveImageField(formData, "heroCharacterResilient", "hero"),
-    resolveImageField(formData, "heroCharacterAiko", "hero"),
+    resolveImageField(formData, "heroBackground", "hero", "setting"),
+    resolveImageField(formData, "heroCharacterResilient", "hero", "setting"),
+    resolveImageField(formData, "heroCharacterAiko", "hero", "setting"),
   ]);
 
   if (!heroBackgroundUrl && !heroCharacterResilientUrl && !heroCharacterAikoUrl) {

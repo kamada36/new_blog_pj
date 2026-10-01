@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
-import type { MediaItem } from "@/app/admin/(dashboard)/media/actions";
+import type { MediaItem, MediaUsageType } from "@/app/admin/(dashboard)/media/actions";
 
 /**
  * 画像項目用の共通フィールド。ローカルファイルのアップロードと、メディアライブラリからの
@@ -22,6 +22,7 @@ export function ImagePickerField({
   onSelect,
   buttonLabel = "ライブラリから選択",
   layout = "row",
+  usageTypeFilter,
 }: {
   name: string;
   accept?: string;
@@ -34,6 +35,8 @@ export function ImagePickerField({
   onSelect?: (url: string) => void;
   buttonLabel?: string;
   layout?: "row" | "stack";
+  /** 指定すると、「ライブラリから選択」モーダルをその用途(記事用/設定用)のメディアのみに絞る。 */
+  usageTypeFilter?: MediaUsageType;
 }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [libraryUrl, setLibraryUrl] = useState("");
@@ -90,7 +93,12 @@ export function ImagePickerField({
         </button>
       </div>
       <input type="hidden" name={`${name}Url`} value={libraryUrl} />
-      <MediaPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={handleSelect} />
+      <MediaPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handleSelect}
+        usageTypeFilter={usageTypeFilter}
+      />
     </div>
   );
 }

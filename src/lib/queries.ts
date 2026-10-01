@@ -40,6 +40,10 @@ export const getSiteSetting = cache(async function getSiteSetting() {
       heroBackgroundUrl: null,
       heroCharacterResilientUrl: null,
       heroCharacterAikoUrl: null,
+      residentName: "アイコ",
+      residentBio:
+        "プログラミングを勉強中でエンジニアへの転職に憧れている。日々このサイト内でレジサンからITに関する様々な事を学んでいる。",
+      residentAvatarUrl: null,
     }
   );
 });
