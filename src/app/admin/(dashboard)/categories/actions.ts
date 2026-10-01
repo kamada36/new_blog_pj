@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
+import { resolveImageField } from "@/lib/uploadField";
 
 const categorySchema = z.object({
   name: z.string().trim().min(1).max(50),
@@ -25,12 +26,14 @@ export async function createCategory(formData: FormData) {
     description: formData.get("description") ?? "",
     order: formData.get("order") ?? 0,
   });
-  if (!parsed.success) redirectWithError("入力内容をご確認ください。");
-  else {
-    await prisma.category.create({ data: parsed.data });
-    revalidatePath("/");
-    revalidatePath("/admin/categories");
+  if (!parsed.success) {
+    redirectWithError("入力内容をご確認ください。");
+    return;
   }
+  const iconUrl = await resolveImageField(formData, "icon", "categories");
+  await prisma.category.create({ data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) } });
+  revalidatePath("/");
+  revalidatePath("/admin/categories");
 }
 
 export async function updateCategory(id: string, formData: FormData) {
@@ -41,12 +44,14 @@ export async function updateCategory(id: string, formData: FormData) {
     description: formData.get("description") ?? "",
     order: formData.get("order") ?? 0,
   });
-  if (!parsed.success) redirectWithError("入力内容をご確認ください。");
-  else {
-    await prisma.category.update({ where: { id }, data: parsed.data });
-    revalidatePath("/");
-    revalidatePath("/admin/categories");
+  if (!parsed.success) {
+    redirectWithError("入力内容をご確認ください。");
+    return;
   }
+  const iconUrl = await resolveImageField(formData, "icon", "categories");
+  await prisma.category.update({ where: { id }, data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) } });
+  revalidatePath("/");
+  revalidatePath("/admin/categories");
 }
 
 export async function deleteCategory(id: string) {

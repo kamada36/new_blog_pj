@@ -51,6 +51,7 @@ model Category {
   name        String
   slug        String    @unique
   description String    @default("")
+  iconUrl     String? // トップページのカテゴリーカード等で使うアイコン画像。未設定時はデフォルトアイコンを表示
   order       Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
