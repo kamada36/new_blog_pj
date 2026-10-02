@@ -96,19 +96,22 @@ export async function updateResident(formData: FormData) {
 }
 
 export async function updateHeroAssets(formData: FormData) {
-  const [heroBackgroundUrl, heroCharacterResilientUrl, heroCharacterAikoUrl] = await Promise.all([
-    resolveImageField(formData, "heroBackground", "hero", "setting"),
-    resolveImageField(formData, "heroCharacterResilient", "hero", "setting"),
-    resolveImageField(formData, "heroCharacterAiko", "hero", "setting"),
-  ]);
+  const [heroBackgroundUrl, heroBackgroundMobileUrl, heroCharacterResilientUrl, heroCharacterAikoUrl] =
+    await Promise.all([
+      resolveImageField(formData, "heroBackground", "hero", "setting"),
+      resolveImageField(formData, "heroBackgroundMobile", "hero", "setting"),
+      resolveImageField(formData, "heroCharacterResilient", "hero", "setting"),
+      resolveImageField(formData, "heroCharacterAiko", "hero", "setting"),
+    ]);
 
-  if (!heroBackgroundUrl && !heroCharacterResilientUrl && !heroCharacterAikoUrl) {
+  if (!heroBackgroundUrl && !heroBackgroundMobileUrl && !heroCharacterResilientUrl && !heroCharacterAikoUrl) {
     redirect(`/admin/settings?error=${encodeURIComponent("アップロードする画像を選択してください。")}`);
     return;
   }
 
   const data = {
     ...(heroBackgroundUrl ? { heroBackgroundUrl } : {}),
+    ...(heroBackgroundMobileUrl ? { heroBackgroundMobileUrl } : {}),
     ...(heroCharacterResilientUrl ? { heroCharacterResilientUrl } : {}),
     ...(heroCharacterAikoUrl ? { heroCharacterAikoUrl } : {}),
   };

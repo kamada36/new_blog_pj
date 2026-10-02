@@ -9,7 +9,7 @@ export function MobileMenuDrawer({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`fixed inset-0 z-[60] md:hidden ${isOpen ? "" : "pointer-events-none"}`}
+      className={`fixed inset-0 z-[60] overflow-hidden md:hidden ${isOpen ? "" : "pointer-events-none"}`}
       aria-hidden={!isOpen}
     >
       <div

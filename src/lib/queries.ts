@@ -38,6 +38,7 @@ export const getSiteSetting = cache(async function getSiteSetting() {
       sponsorSidebarCompactEmbed: "",
       sponsorFooterEmbed: "",
       heroBackgroundUrl: null,
+      heroBackgroundMobileUrl: null,
       heroCharacterResilientUrl: null,
       heroCharacterAikoUrl: null,
       residentName: "アイコ",
