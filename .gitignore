@@ -52,3 +52,6 @@ next-env.d.ts
 
 # WordPress export dump(s) used by scripts/import-wordpress-sql.ts (contains raw DB data, never commit)
 /scripts/data/
+
+# 移植作業用の一時参照フォルダ（Git追跡せずローカルでのみ参照）
+/reference-tools/
