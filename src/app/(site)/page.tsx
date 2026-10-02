@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Container } from "@/components/layout/Container";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CategoryTiles } from "@/components/home/CategoryTiles";
+import { Hero } from "@/components/home/Hero";
 import { ArticleCard } from "@/components/article/ArticleCard";
 import { ArticleRowCard } from "@/components/article/ArticleRowCard";
 import { IconMug } from "@/components/icons/CafeIcons";
@@ -16,8 +17,6 @@ import {
 } from "@/lib/queries";
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const CATCHPHRASE = "この一杯から始まる、IT転職への道しるべ";
 
 export default async function HomePage() {
   const [siteSetting, categories, recentArticles, popularArticles, author] = await Promise.all([
@@ -41,97 +40,25 @@ export default async function HomePage() {
     ...popularArticles,
   ]);
 
-  const hasHeroBg = Boolean(siteSetting.heroBackgroundUrl);
-
   return (
     <div className="pb-20">
-      <section
-        className={`relative overflow-hidden border-b border-border ${
-          hasHeroBg ? "" : "bg-gradient-to-b from-accent-soft/60 to-background"
-        }`}
-      >
-        {siteSetting.heroBackgroundUrl && (
-          <>
-            <Image src={siteSetting.heroBackgroundUrl} alt="" fill priority className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-b from-foreground/65 via-foreground/45 to-foreground/70" />
-          </>
-        )}
+      <Hero
+        tagline={siteSetting.tagline}
+        backgroundUrl={siteSetting.heroBackgroundUrl}
+        backgroundMobileUrl={siteSetting.heroBackgroundMobileUrl}
+        characterResilientUrl={siteSetting.heroCharacterResilientUrl}
+        characterAikoUrl={siteSetting.heroCharacterAikoUrl}
+      />
 
-        {siteSetting.heroCharacterResilientUrl && (
-          <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-28 sm:block sm:w-36 lg:w-44">
-            <Image
-              src={siteSetting.heroCharacterResilientUrl}
-              alt="レジサン"
-              fill
-              sizes="180px"
-              className="object-contain object-bottom drop-shadow-xl"
-            />
-          </div>
-        )}
-        {siteSetting.heroCharacterAikoUrl && (
-          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-28 sm:block sm:w-36 lg:w-44">
-            <Image
-              src={siteSetting.heroCharacterAikoUrl}
-              alt="アイコ"
-              fill
-              sizes="180px"
-              className="object-contain object-bottom drop-shadow-xl"
-            />
-          </div>
-        )}
-
-        <Container
-          className={`relative z-10 flex flex-col items-center gap-4 py-16 text-center sm:py-24 ${
-            hasHeroBg ? "text-white" : "text-foreground"
-          }`}
-        >
-          <p className="hero-reveal font-brand text-3xl italic tracking-wide opacity-95 [animation-delay:0ms] sm:text-5xl">
-            Resilient-cer cafe
-          </p>
-          <p className="hero-reveal flex items-center justify-center gap-3 font-display text-xs font-medium tracking-[0.25em] opacity-70 [animation-delay:300ms] sm:text-sm">
-            <span className="h-px w-5 bg-current/30" />
-            レジリエンサーカフェ
-            <span className="h-px w-5 bg-current/30" />
-          </p>
-
-          <h1 className="hero-reveal font-display text-xl font-bold tracking-tight [animation-delay:650ms] sm:text-3xl">
-            {siteSetting.tagline}
-          </h1>
-
-          <p className="hero-reveal text-xs tracking-wide opacity-60 [animation-delay:950ms]">{siteUrl}</p>
-
-          <p
-            className={`hero-underline mt-1 font-display text-base sm:text-lg ${
-              hasHeroBg ? "text-white/95" : "text-foreground"
-            }`}
-          >
-            {CATCHPHRASE.split("").map((char, index) => (
-              <span
-                key={index}
-                className="hero-char inline-block"
-                style={{ animationDelay: `${1200 + index * 45}ms` }}
-              >
-                {char === " " ? " " : char}
-              </span>
-            ))}
-          </p>
-
-          <Link
-            href="/about"
-            className="hero-reveal group relative inline-flex items-center gap-1.5 rounded-full border border-current/30 px-6 py-2 text-sm tracking-wide transition-all duration-500 ease-out [animation-delay:2650ms] hover:-translate-y-0.5 hover:border-current/55 hover:shadow-lg"
-          >
-            About
-            <span className="inline-block w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-500 ease-out group-hover:w-4 group-hover:opacity-100">
-              →
-            </span>
-          </Link>
-
-        </Container>
-      </section>
-
-      <p className="py-3 text-center text-[11px] tracking-wide text-foreground-muted">
-        当サイトは広告収入を含むアフィリエイトリンクを利用しています。
-      </p>
+      {/* 見出しの直下に隙間なく続ける、上下2段のコーヒー色の帯 */}
+      <div className="hero-disclaimer">
+        <div aria-hidden className="hero-disclaimer-top" />
+        <p className="hero-disclaimer-bottom px-3 py-2 text-center text-[11px] tracking-normal sm:px-4 sm:text-[13px] sm:tracking-wide">
+          {/* 折り返すときは語の途中で切らず、2つのまとまりの間だけで改行する */}
+          <span className="inline-block">当サイトは広告収入を含む</span>
+          <span className="inline-block">アフィリエイトリンクを利用しています。</span>
+        </p>
+      </div>
 
       <Container className="mt-14">
         <CategoryTiles categories={categories} />
@@ -163,7 +90,7 @@ export default async function HomePage() {
                     title={section.category.name}
                     href={`/category/${section.category.slug}`}
                   />
-                  <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
                     {section.articles.map((article) => (
                       <ArticleRowCard
                         key={article.id}
@@ -177,7 +104,7 @@ export default async function HomePage() {
               ))}
 
             {author && (
-              <section className="mt-16">
+              <section className="mt-16 hidden lg:block">
                 <div className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-surface p-8 text-center sm:flex-row sm:text-left">
                   {author.avatarUrl ? (
                     <Image
@@ -230,7 +157,7 @@ export default async function HomePage() {
             )}
 
             {popularArticles.length > 0 && (
-              <section className="mt-16">
+              <section className="mt-16 hidden lg:block">
                 <SectionHeading title="人気記事" />
                 <div className="mt-6 flex flex-col gap-4">
                   {popularArticles.map((article) => (

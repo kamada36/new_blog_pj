@@ -3,7 +3,7 @@ import { ArticleEditorForm } from "../ArticleEditorForm";
 
 export default async function NewArticlePage() {
   const [categories, tags, shortcodes] = await Promise.all([
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] }),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
     prisma.shortcode.findMany({ orderBy: { createdAt: "asc" } }),
   ]);

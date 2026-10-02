@@ -34,10 +34,13 @@ export const getSiteSetting = cache(async function getSiteSetting() {
       siteName: "レジリエンサーCafe",
       tagline: "YOUR RESILIENCE MATTERS!",
       footerCopyright: "Resilient-cer Cafe",
+      headerLogoUrl: null,
+      faviconUrl: null,
       sponsorSidebarEmbed: "",
       sponsorSidebarCompactEmbed: "",
       sponsorFooterEmbed: "",
       heroBackgroundUrl: null,
+      heroBackgroundMobileUrl: null,
       heroCharacterResilientUrl: null,
       heroCharacterAikoUrl: null,
       residentName: "アイコ",
@@ -53,7 +56,7 @@ export const getPrimaryAuthor = cache(async function getPrimaryAuthor() {
 });
 
 export const getCategories = cache(async function getCategories() {
-  return prisma.category.findMany({ orderBy: { order: "asc" } });
+  return prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] });
 });
 
 // 記事本文中の [sc name="xxx"] ショートコード展開に使う、キャラクター吹き出しプリセット一覧。

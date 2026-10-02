@@ -12,7 +12,7 @@ function iconPreview(url: string) {
 
 export default async function AdminCategoriesPage({ searchParams }: PageProps<"/admin/categories">) {
   const { error } = await searchParams;
-  const categories = await prisma.category.findMany({ orderBy: { order: "asc" } });
+  const categories = await prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] });
 
   return (
     <div>
@@ -43,11 +43,12 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps<"/
                 className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
                 placeholder="スラッグ"
               />
-              <input
+              <textarea
                 name="description"
                 defaultValue={category.description}
+                rows={2}
                 className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
-                placeholder="説明"
+                placeholder="概要（トップページに表示。改行も反映されます）"
               />
               <input
                 name="order"
@@ -95,7 +96,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps<"/
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_2fr_80px_auto] sm:items-center">
           <input name="name" required placeholder="新しいカテゴリー名" className="rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
           <input name="slug" placeholder="スラッグ（未入力なら自動生成）" className="rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
-          <input name="description" placeholder="説明" className="rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
+          <textarea name="description" rows={2} placeholder="概要（トップページに表示。改行も反映されます）" className="rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
           <input name="order" type="number" defaultValue={0} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
           <button type="submit" className="justify-self-end rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent-dark">
             追加

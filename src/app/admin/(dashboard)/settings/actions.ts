@@ -62,6 +62,32 @@ export async function updateSponsorSlots(formData: FormData) {
   redirect("/admin/settings?status=success");
 }
 
+export async function updateBranding(formData: FormData) {
+  const [headerLogoUrl, faviconUrl] = await Promise.all([
+    resolveImageField(formData, "headerLogo", "branding", "setting"),
+    resolveImageField(formData, "favicon", "branding", "setting"),
+  ]);
+
+  if (!headerLogoUrl && !faviconUrl) {
+    redirect(`/admin/settings?error=${encodeURIComponent("設定する画像を選択してください。")}`);
+    return;
+  }
+
+  const data = {
+    ...(headerLogoUrl ? { headerLogoUrl } : {}),
+    ...(faviconUrl ? { faviconUrl } : {}),
+  };
+
+  await prisma.siteSetting.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
+  });
+
+  revalidatePath("/", "layout");
+  redirect("/admin/settings?status=success");
+}
+
 const residentSchema = z.object({
   residentName: z.string().trim().min(1, "名前を入力してください").max(30),
   residentBio: z.string().trim().min(1, "紹介文を入力してください").max(300),
@@ -96,19 +122,22 @@ export async function updateResident(formData: FormData) {
 }
 
 export async function updateHeroAssets(formData: FormData) {
-  const [heroBackgroundUrl, heroCharacterResilientUrl, heroCharacterAikoUrl] = await Promise.all([
-    resolveImageField(formData, "heroBackground", "hero", "setting"),
-    resolveImageField(formData, "heroCharacterResilient", "hero", "setting"),
-    resolveImageField(formData, "heroCharacterAiko", "hero", "setting"),
-  ]);
+  const [heroBackgroundUrl, heroBackgroundMobileUrl, heroCharacterResilientUrl, heroCharacterAikoUrl] =
+    await Promise.all([
+      resolveImageField(formData, "heroBackground", "hero", "setting"),
+      resolveImageField(formData, "heroBackgroundMobile", "hero", "setting"),
+      resolveImageField(formData, "heroCharacterResilient", "hero", "setting"),
+      resolveImageField(formData, "heroCharacterAiko", "hero", "setting"),
+    ]);
 
-  if (!heroBackgroundUrl && !heroCharacterResilientUrl && !heroCharacterAikoUrl) {
+  if (!heroBackgroundUrl && !heroBackgroundMobileUrl && !heroCharacterResilientUrl && !heroCharacterAikoUrl) {
     redirect(`/admin/settings?error=${encodeURIComponent("アップロードする画像を選択してください。")}`);
     return;
   }
 
   const data = {
     ...(heroBackgroundUrl ? { heroBackgroundUrl } : {}),
+    ...(heroBackgroundMobileUrl ? { heroBackgroundMobileUrl } : {}),
     ...(heroCharacterResilientUrl ? { heroCharacterResilientUrl } : {}),
     ...(heroCharacterAikoUrl ? { heroCharacterAikoUrl } : {}),
   };
