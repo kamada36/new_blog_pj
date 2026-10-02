@@ -177,7 +177,7 @@ export default async function HomePage() {
               ))}
 
             {author && (
-              <section className="mt-16">
+              <section className="mt-16 hidden lg:block">
                 <div className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-surface p-8 text-center sm:flex-row sm:text-left">
                   {author.avatarUrl ? (
                     <Image
@@ -230,7 +230,7 @@ export default async function HomePage() {
             )}
 
             {popularArticles.length > 0 && (
-              <section className="mt-16">
+              <section className="mt-16 hidden lg:block">
                 <SectionHeading title="人気記事" />
                 <div className="mt-6 flex flex-col gap-4">
                   {popularArticles.map((article) => (
