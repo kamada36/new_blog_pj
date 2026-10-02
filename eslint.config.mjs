@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 統合元の参照用ツール(直接編集しない・ビルド対象外)
+    "reference-tools/**",
   ]),
 ]);
 
