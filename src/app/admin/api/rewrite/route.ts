@@ -8,6 +8,7 @@ import {
   saveRewriteBackupIfAbsent,
 } from "@/lib/ai/articleStore";
 import { normalizeArticleMarkdown } from "@/lib/ai/markdown";
+import { applyArticleSpacing, hasSpacers, stripSpacers } from "@/lib/ai/spacing";
 import { getMaxOutputTokensForModel, isVerbosityRiskModel } from "@/lib/ai/models";
 import { badRequestResponse, ndjsonResponse, unauthorizedResponse } from "@/lib/ai/ndjsonResponse";
 import { describeAiError, generateWithContinuation } from "@/lib/ai/provider";
@@ -57,9 +58,11 @@ export async function POST(req: Request) {
       .filter((link) => !article.contentMarkdown.includes(link.url));
 
     const resident = await getResidentPersona();
+    // AI生成記事は行間用のスペーサー(&nbsp;)を含む。AIには見せず、リライト後に付け直す(含まない記事には付けない)。
+    const hadSpacers = hasSpacers(article.contentMarkdown);
     const { system, prompt } = buildRewritePrompt({
       title: article.title,
-      contentMarkdown: article.contentMarkdown,
+      contentMarkdown: hadSpacers ? stripSpacers(article.contentMarkdown) : article.contentMarkdown,
       instruction: body.instruction,
       internalLinks,
       insertUpdatedNote: body.insertUpdatedNote,
@@ -92,7 +95,8 @@ export async function POST(req: Request) {
       });
 
       const { content, summary } = splitContentAndSummary(generation.text);
-      const rewritten = normalizeArticleMarkdown(content, { fillMissingIcon: false, normalizeHeadings: false });
+      const normalized = normalizeArticleMarkdown(content, { fillMissingIcon: false, normalizeHeadings: false });
+      const rewritten = hadSpacers ? applyArticleSpacing(normalized) : normalized;
 
       if (!rewritten.trim()) throw new Error("AIの応答が空でした。別のモデルで再度お試しください。");
       // 公開中の記事を壊さないための安全弁。出力が上限で途切れた/大幅に短くなった結果は保存しない。

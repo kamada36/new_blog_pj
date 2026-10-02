@@ -168,6 +168,7 @@ export function normalizeArticleMarkdown(raw: string, options: NormalizeArticleO
 export function markdownToPlainText(markdown: string): string {
   return markdown
     .replace(/```[\s\S]*?```/g, " ")
+    .replace(/&nbsp;/g, " ")
     .replace(/\[sc\s[^\]]*?talk="([^"]*)"[^\]]*\]/g, "$1")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")

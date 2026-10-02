@@ -10,6 +10,7 @@ import {
 import { generateAndStoreEyecatch, generateEyecatchPrompt } from "@/lib/ai/eyecatch";
 import { tryParseOutline } from "@/lib/ai/json";
 import { normalizeArticleMarkdown } from "@/lib/ai/markdown";
+import { applyArticleSpacing, stripSpacers } from "@/lib/ai/spacing";
 import { isVerbosityRiskModel } from "@/lib/ai/models";
 import { badRequestResponse, ndjsonResponse, unauthorizedResponse } from "@/lib/ai/ndjsonResponse";
 import { describeAiError, generateWithContinuation } from "@/lib/ai/provider";
@@ -64,7 +65,8 @@ export async function POST(req: Request) {
       additionalInstruction: body.additionalInstruction,
       textLinks,
       bannerLinks,
-      currentArticle: body.currentArticle,
+      // 行間用のスペーサー(&nbsp;)はAIに見せない(保存の直前に付け直す)
+      currentArticle: body.currentArticle ? stripSpacers(body.currentArticle) : undefined,
       resident,
     });
 
@@ -91,8 +93,9 @@ export async function POST(req: Request) {
     send({ type: "phase", phase: "finalizing" });
 
     // 目印文字列は整形の後でリンクへ戻す(ASPのURLを整形処理に通さないため)
+    // 行間(ブロック間の余白)は、AIの出力を整えた後でプログラムが一括して付与する
     const content = restoreAffiliateLinks(
-      normalizeArticleMarkdown(generation.text, { fillMissingIcon: true, normalizeHeadings: true }),
+      applyArticleSpacing(normalizeArticleMarkdown(generation.text, { fillMissingIcon: true, normalizeHeadings: true })),
       textLinks,
       bannerLinks
     );
