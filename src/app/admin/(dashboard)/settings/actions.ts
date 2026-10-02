@@ -62,6 +62,32 @@ export async function updateSponsorSlots(formData: FormData) {
   redirect("/admin/settings?status=success");
 }
 
+export async function updateBranding(formData: FormData) {
+  const [headerLogoUrl, faviconUrl] = await Promise.all([
+    resolveImageField(formData, "headerLogo", "branding", "setting"),
+    resolveImageField(formData, "favicon", "branding", "setting"),
+  ]);
+
+  if (!headerLogoUrl && !faviconUrl) {
+    redirect(`/admin/settings?error=${encodeURIComponent("設定する画像を選択してください。")}`);
+    return;
+  }
+
+  const data = {
+    ...(headerLogoUrl ? { headerLogoUrl } : {}),
+    ...(faviconUrl ? { faviconUrl } : {}),
+  };
+
+  await prisma.siteSetting.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
+  });
+
+  revalidatePath("/", "layout");
+  redirect("/admin/settings?status=success");
+}
+
 const residentSchema = z.object({
   residentName: z.string().trim().min(1, "名前を入力してください").max(30),
   residentBio: z.string().trim().min(1, "紹介文を入力してください").max(300),

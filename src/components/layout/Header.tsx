@@ -32,7 +32,12 @@ export async function Header() {
       )}
       <Container className="flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <IconMug className="h-7 w-7 text-accent" />
+          {siteSetting.headerLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- 幅が不定のロゴを高さ固定で出すため素のimgを使う
+            <img src={siteSetting.headerLogoUrl} alt="" className="h-8 w-auto max-w-[8rem] object-contain" />
+          ) : (
+            <IconMug className="h-7 w-7 text-accent" />
+          )}
           <span className="font-display text-lg font-bold tracking-tight">{siteSetting.siteName}</span>
         </Link>
 

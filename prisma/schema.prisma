@@ -29,6 +29,10 @@ model SiteSetting {
   tagline         String @default("YOUR RESILIENCE MATTERS!")
   footerCopyright String @default("レジリエンサーCafe")
 
+  // ヘッダーのサイト名横ロゴとファビコン。未設定時はデフォルト(マグアイコン / app/favicon.ico)を使う
+  headerLogoUrl String?
+  faviconUrl    String?
+
   // スポンサーリンク(アフィリエイト広告)の埋め込みHTML。ASPが発行するコードをそのまま保存し、
   // 表示側で一切のリサイズ・加工をしない(規約上、改変不可のため)。
   sponsorSidebarEmbed        String @default("") // ウィジェット枠(正方形〜縦長長方形の広告を想定)

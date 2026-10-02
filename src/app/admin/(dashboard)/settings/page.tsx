@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { getSiteSetting } from "@/lib/queries";
 import { ImagePickerField } from "@/components/admin/ImagePickerField";
-import { updateSiteSetting, updateSponsorSlots, updateHeroAssets, updateResident } from "./actions";
+import { updateSiteSetting, updateSponsorSlots, updateHeroAssets, updateResident, updateBranding } from "./actions";
 
 const HERO_PREVIEW_CLASS = "h-16 w-16 rounded-lg border border-border object-contain bg-surface-muted";
 
@@ -62,6 +62,34 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           保存する
         </button>
       </form>
+
+      <div className="mt-10 max-w-lg rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-base font-bold">ロゴ・ファビコン</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          未設定の項目は、デフォルトのマグアイコン・既定のファビコンが使われます。
+        </p>
+
+        <form action={updateBranding} className="mt-4 flex flex-col gap-5">
+          <HeroImageField
+            name="headerLogo"
+            label="ヘッダーのロゴ"
+            hint="ヘッダーのサイト名の横に表示されます。正方形、または横長の透過PNG/SVGを推奨します。"
+            currentUrl={setting.headerLogoUrl}
+          />
+          <HeroImageField
+            name="favicon"
+            label="ファビコン"
+            hint="ブラウザのタブに表示されるアイコンです。正方形(32×32px以上、PNG推奨)の画像を設定してください。"
+            currentUrl={setting.faviconUrl}
+          />
+          <button
+            type="submit"
+            className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
+          >
+            画像を保存する
+          </button>
+        </form>
+      </div>
 
       <div className="mt-10 max-w-lg rounded-2xl border border-border bg-surface p-5">
         <h2 className="font-display text-base font-bold">スポンサーリンク（アフィリエイト広告）</h2>

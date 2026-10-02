@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Zen_Kaku_Gothic_New, Noto_Sans_JP, Dancing_Script } from "next/font/google";
+import { getSiteSetting } from "@/lib/queries";
 import "./globals.css";
 
 const bodyFont = Noto_Sans_JP({
@@ -23,14 +24,20 @@ const brandFont = Dancing_Script({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: "レジリエンサーCafe",
-    template: "%s | レジリエンサーCafe",
-  },
-  description: "この一杯から始まる、IT転職への道しるべ。未経験からのIT転職・キャリアの考え方を発信するブログです。",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { faviconUrl } = await getSiteSetting();
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: "レジリエンサーCafe",
+      template: "%s | レジリエンサーCafe",
+    },
+    description: "この一杯から始まる、IT転職への道しるべ。未経験からのIT転職・キャリアの考え方を発信するブログです。",
+    // app/favicon.ico を置くと設定値と並んで2本出力されブラウザの選択が不定になるため、
+    // 既定のファビコンは public に置き、リンクを常に1本だけにする
+    icons: { icon: faviconUrl ?? "/favicon-default.ico" },
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
