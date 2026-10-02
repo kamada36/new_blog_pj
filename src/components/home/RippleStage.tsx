@@ -31,6 +31,36 @@ export function RippleStage({ children, className = "" }: { children: ReactNode;
     window.setTimeout(() => setDrops((prev) => prev.filter((d) => d.id !== drop.id)), DROP_LIFETIME_MS);
   }
 
+  // 丸窓([data-peephole])から背景全面の写真が覗いて見えるよう、各窓のセクション内での位置を測って
+  // CSS変数に渡す(窓の中の写真は、この値だけずらして「セクションと同じ大きさ」で置かれる)。
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const peepholes = Array.from(stage.querySelectorAll<HTMLElement>("[data-peephole]"));
+
+    const measure = () => {
+      // 背景写真は inset-0 (=パディングボックス)に敷いているので、境界線を含まない client* の寸法で合わせる
+      const stageRect = stage.getBoundingClientRect();
+      const originX = stageRect.left + stage.clientLeft;
+      const originY = stageRect.top + stage.clientTop;
+      stage.style.setProperty("--stage-w", `${stage.clientWidth}px`);
+      stage.style.setProperty("--stage-h", `${stage.clientHeight}px`);
+      for (const el of peepholes) {
+        const rect = el.getBoundingClientRect();
+        el.style.setProperty("--peek-x", `${originX - rect.left - el.clientLeft}px`);
+        el.style.setProperty("--peek-y", `${originY - rect.top - el.clientTop}px`);
+      }
+      stage.dataset.peekReady = "true";
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    peepholes.forEach((el) => observer.observe(el));
+    document.fonts?.ready.then(measure);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     if (prefersReducedMotion()) return;
 
