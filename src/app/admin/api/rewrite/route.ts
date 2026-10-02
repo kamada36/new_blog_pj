@@ -7,6 +7,7 @@ import {
   logRewrite,
   saveRewriteBackupIfAbsent,
 } from "@/lib/ai/articleStore";
+import { collectLinkedSlugs, loadReasons } from "@/lib/ai/linkIndex";
 import { normalizeArticleMarkdown } from "@/lib/ai/markdown";
 import { applyArticleSpacing, hasSpacers, stripSpacers } from "@/lib/ai/spacing";
 import { getMaxOutputTokensForModel, isVerbosityRiskModel } from "@/lib/ai/models";
@@ -49,13 +50,16 @@ export async function POST(req: Request) {
     // 内部リンクのURLはクライアントの値を信用せず、IDからDBで引き直す。本文で既にリンク済みの記事は除く。
     const targets = body.internalLinkArticleIds.length
       ? await prisma.article.findMany({
-          where: { id: { in: body.internalLinkArticleIds }, NOT: { id: article.id } },
-          select: { title: true, slug: true },
+          where: { id: { in: body.internalLinkArticleIds }, status: "published", NOT: { id: article.id } },
+          select: { id: true, title: true, slug: true },
         })
       : [];
+    // 候補選びのときにAIが書いた「紹介できる文脈」を、挿入位置の手がかりとして渡す
+    const reasons = targets.length ? await loadReasons(article.id) : new Map<string, string>();
+    const linkedSlugs = collectLinkedSlugs(article.contentMarkdown);
     const internalLinks: InternalLinkRequest[] = targets
-      .map((t) => ({ title: t.title, url: `/articles/${t.slug}` }))
-      .filter((link) => !article.contentMarkdown.includes(link.url));
+      .filter((t) => !linkedSlugs.has(t.slug))
+      .map((t) => ({ title: t.title, url: `/articles/${t.slug}`, reason: reasons.get(t.id) }));
 
     const resident = await getResidentPersona();
     // AI生成記事は行間用のスペーサー(&nbsp;)を含む。AIには見せず、リライト後に付け直す(含まない記事には付けない)。
@@ -65,6 +69,7 @@ export async function POST(req: Request) {
       contentMarkdown: hadSpacers ? stripSpacers(article.contentMarkdown) : article.contentMarkdown,
       instruction: body.instruction,
       internalLinks,
+      internalLinkFormat: body.internalLinkFormat,
       insertUpdatedNote: body.insertUpdatedNote,
       resident,
     });

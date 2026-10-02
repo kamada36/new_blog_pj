@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_LINKS_PER_TYPE, parseBannerHtml } from "./affiliate";
+import { INTERNAL_LINK_FORMATS } from "./linkTypes";
 
 // Route Handler / Server Actionが受け取る入力の検証。クライアントの値はそのままプロンプトに入るため、
 // 型・長さ・件数をここで必ず絞る。
@@ -58,6 +59,7 @@ export const rewriteRequestSchema = z.object({
   instruction: z.string().trim().max(5000).optional(),
   /** 内部リンクとして挿入する自サイト記事のID(URLはサーバー側でDBから引く) */
   internalLinkArticleIds: z.array(z.string().max(100)).max(5).default([]),
+  internalLinkFormat: z.enum(INTERNAL_LINK_FORMATS).default("callout"),
   publishStatus: z.enum(["keep", "draft", "published"]).default("keep"),
   insertUpdatedNote: z.boolean().default(true),
 });

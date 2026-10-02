@@ -3,6 +3,7 @@
 // lib/internal-links.ts(内部リンクの挿入指示)を踏襲し、HTML前提の指示をこのブログのMarkdown向けに書き換えている。
 import { MARKDOWN_GUIDELINES, buildSiteConcept, type ResidentPersona } from "./guidelines";
 import { formatJapaneseDate } from "./articlePrompts";
+import type { InternalLinkFormat } from "./linkTypes";
 
 /** モデルの出力のうち、本文と変更概要を分ける区切り(行頭〜行末の「===SUMMARY===」)。 */
 export const SUMMARY_DIVIDER = /\n?===\s*SUMMARY\s*===\n?/i;
@@ -11,21 +12,41 @@ export interface InternalLinkRequest {
   /** サイト内パス(/articles/xxx) */
   url: string;
   title: string;
+  /** 紹介できる文脈(AIが選別したときの理由)。挿入位置を決める手がかりになる */
+  reason?: string;
 }
 
-export function buildInternalLinkSection(links: InternalLinkRequest[]): string {
+function formatRules(format: InternalLinkFormat): string {
+  if (format === "text") {
+    return [
+      "- 各リンクは、案内文の一部として自然に組み込んだテキストリンク([語句または記事タイトル](URL))で挿入する。",
+      "- 例: 〇〇の詳しい手順は、[記事タイトル](URL)で解説しています。",
+    ].join("\n");
+  }
+  return [
+    "- 各リンクは「案内文の段落」→「あわせて読みたいの囲み」の順で挿入する。案内文は文脈に合わせて自然に書く(例: 「〇〇の詳細については、こちらの記事で解説しています。」)。",
+    "- 囲みは次の形式を一字一句そのまま使う(「>」の囲みの中に、太字の見出しと、記事タイトルをアンカーテキストにしたリンクを置く。前後は空行):",
+    "  > **☕ あわせて読みたい**",
+    "  >",
+    "  > [記事タイトル](URL)",
+  ].join("\n");
+}
+
+export function buildInternalLinkSection(links: InternalLinkRequest[], format: InternalLinkFormat = "callout"): string {
   if (links.length === 0) return "";
-  const list = links.map((link, i) => `${i + 1}. 記事タイトル: ${link.title}\n   URL: ${link.url}`).join("\n");
+  const list = links
+    .map((link, i) => {
+      const lines = [`${i + 1}. 記事タイトル: ${link.title}`, `   URL: ${link.url}`];
+      if (link.reason) lines.push(`   紹介できる文脈: ${link.reason}`);
+      return lines.join("\n");
+    })
+    .join("\n");
 
   return `
 # 挿入する内部リンク(必須)
 以下の自サイト記事へのリンクを、本文中でもっとも自然な位置に1件ずつ挿入すること。
-- 各リンクは「案内文の段落」→「あわせて読みたいの囲み」の順で挿入する。案内文は文脈に合わせて自然に書く(例: 「〇〇の詳細については、こちらの記事で解説しています。」)。
-- 囲みは次の形式を一字一句そのまま使う(「>」の囲みの中に、太字の見出しと、記事タイトルをアンカーテキストにしたリンクを置く。前後は空行):
-  > **☕ あわせて読みたい**
-  >
-  > [記事タイトル](URL)
-- 挿入位置は、その話題を扱っている段落・見出しの直後など、流れが途切れない場所を選ぶ。
+${formatRules(format)}
+- 挿入位置は「紹介できる文脈」を手がかりに、その話題を扱っている段落・見出しの直後など、流れが途切れない場所を選ぶ。
 - URLは下記のものを一字一句変えずに使う。下記以外のURLを作らない。各リンクは1回だけ挿入する。
 - 本文の既存の意味・構成は変えず、リンクの案内として追加する文(または段落)以外の事実を書き足さない。
 
@@ -39,13 +60,14 @@ export interface RewritePromptInput {
   contentMarkdown: string;
   instruction?: string;
   internalLinks: InternalLinkRequest[];
+  internalLinkFormat?: InternalLinkFormat;
   /** 本文の先頭に「最終更新日」の1行を入れる(既にあれば日付を更新する) */
   insertUpdatedNote: boolean;
   resident?: ResidentPersona;
 }
 
 export function buildRewritePrompt(input: RewritePromptInput): { system: string; prompt: string } {
-  const { title, contentMarkdown, instruction, internalLinks, insertUpdatedNote, resident } = input;
+  const { title, contentMarkdown, instruction, internalLinks, internalLinkFormat, insertUpdatedNote, resident } = input;
   const hasInstruction = Boolean(instruction?.trim());
   const today = formatJapaneseDate();
 
@@ -89,7 +111,7 @@ ${title}
 
 # 記事本文(Markdown)
 ${contentMarkdown}
-${instructionSection}${buildInternalLinkSection(internalLinks)}
+${instructionSection}${buildInternalLinkSection(internalLinks, internalLinkFormat)}
 # リライトのルール(必須)
 ${rules.map((rule, i) => `${i + 1}. ${rule}`).join("\n")}`;
 

@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { getLinkIndexStatus, loadSuggestions } from "@/lib/ai/linkIndex";
+import type { LinkIndexStatus, LinkSuggestionView } from "@/lib/ai/linkTypes";
 import { RewriteWorkbench, type RewriteRow } from "./RewriteWorkbench";
+
+// 内部リンク候補の選別・記事索引の作成(Server Action)はAIを何度も呼ぶため、時間がかかる。
+// ページ単位で、このページから呼ぶServer Actionの実行時間の上限を引き上げる。
+export const maxDuration = 300;
 
 const PER_PAGE = 10;
 
@@ -67,6 +73,18 @@ export default async function AdminRewritePage({ searchParams }: PageProps<"/adm
     prisma.article.count({ where: { status: "published" } }),
   ]);
 
+  // 内部リンク候補(索引・提案テーブル)。マイグレーション未適用でも画面全体は表示できるよう、失敗しても続行する。
+  let linkStatus: LinkIndexStatus | null = null;
+  let suggestions: Record<string, LinkSuggestionView[]> = {};
+  try {
+    [linkStatus, suggestions] = await Promise.all([
+      getLinkIndexStatus(),
+      loadSuggestions(articles.map((a) => ({ id: a.id, contentMarkdown: a.contentMarkdown }))),
+    ]);
+  } catch (error) {
+    console.error("[rewrite] 内部リンク候補の読み込みに失敗しました(マイグレーション未適用の可能性):", error);
+  }
+
   // 本文そのものはクライアントへ渡さない(文字数だけ)
   const rows: RewriteRow[] = articles.map((a) => ({
     id: a.id,
@@ -78,6 +96,7 @@ export default async function AdminRewritePage({ searchParams }: PageProps<"/adm
     contentLength: a.contentMarkdown.length,
     categoryName: a.category.name,
     pending: a.rewriteBackup !== null,
+    suggestions: suggestions[a.id] ?? null,
   }));
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -157,7 +176,7 @@ export default async function AdminRewritePage({ searchParams }: PageProps<"/adm
         )}
       </form>
 
-      <RewriteWorkbench rows={rows} keys={keys} />
+      <RewriteWorkbench rows={rows} keys={keys} linkStatus={linkStatus} />
 
       <nav className="flex items-center justify-between text-sm" aria-label="ページ送り">
         <span className="text-foreground-muted">

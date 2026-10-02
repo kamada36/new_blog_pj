@@ -6,14 +6,16 @@ import { useRouter } from "next/navigation";
 import { ModelSelect } from "@/components/admin/ai/ModelSelect";
 import { estimateRewriteCost, formatJpy } from "@/lib/ai/costs";
 import { DEFAULT_REWRITE_MODEL, getModel, getProviderForModel } from "@/lib/ai/models";
-import { MAX_INTERNAL_LINKS_PER_REWRITE } from "@/lib/ai/limits";
+import { isInternalLinkFormat, type InternalLinkFormat, type LinkIndexStatus, type LinkSuggestionView } from "@/lib/ai/linkTypes";
 import { postEventStream, type RewriteStreamEvent } from "@/lib/ai/stream";
 import {
   finalizeRewriteAction,
+  findLinkSuggestionsAction,
   revertRewriteAction,
-  searchLinkCandidatesAction,
   type LinkCandidate,
 } from "./actions";
+import { LinkIndexPanel } from "./LinkIndexPanel";
+import { LinkSuggestionsPanel } from "./LinkSuggestionsPanel";
 
 export type RewriteRow = {
   id: string;
@@ -26,6 +28,8 @@ export type RewriteRow = {
   categoryName: string;
   /** 未確定のリライトがある(元に戻せる) */
   pending: boolean;
+  /** AIが選別した内部リンク候補。null = まだ候補を探していない */
+  suggestions: LinkSuggestionView[] | null;
 };
 
 type PublishChoice = "keep" | "draft" | "published";
@@ -38,6 +42,7 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 };
 
 const MODEL_STORAGE_KEY = "admin.rewrite.model";
+const LINK_FORMAT_STORAGE_KEY = "admin.rewrite.linkFormat";
 const LIVE_PREVIEW_TAIL_CHARS = 800;
 
 const INPUT_CLASS =
@@ -61,9 +66,12 @@ function formatDateTime(iso: string): string {
 export function RewriteWorkbench({
   rows,
   keys,
+  linkStatus,
 }: {
   rows: RewriteRow[];
   keys: { gemini: boolean; anthropic: boolean };
+  /** 内部リンク候補の索引の状況。null = 必要なテーブルが無い(マイグレーション未適用) */
+  linkStatus: LinkIndexStatus | null;
 }) {
   const router = useRouter();
   const [modelId, setModelId] = useState(DEFAULT_REWRITE_MODEL);
@@ -71,6 +79,11 @@ export function RewriteWorkbench({
   const [insertUpdatedNote, setInsertUpdatedNote] = useState(true);
   const [instructions, setInstructions] = useState<Record<string, string>>({});
   const [links, setLinks] = useState<Record<string, LinkCandidate[]>>({});
+  const [linkFormat, setLinkFormat] = useState<InternalLinkFormat>("callout");
+  // 画面で探し直した候補(サーバーから再取得されるまでの表示用)
+  const [foundSuggestions, setFoundSuggestions] = useState<Record<string, LinkSuggestionView[]>>({});
+  const [findingIds, setFindingIds] = useState<Set<string>>(new Set());
+  const indexedCount = linkStatus?.indexed ?? 0;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [liveBody, setLiveBody] = useState("");
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -86,6 +99,8 @@ export function RewriteWorkbench({
       const stored = localStorage.getItem(MODEL_STORAGE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- マウント時に一度だけ、ブラウザ保存の値で初期化する
       if (stored && getModel(stored)) setModelId(stored);
+      const storedFormat = localStorage.getItem(LINK_FORMAT_STORAGE_KEY);
+      if (isInternalLinkFormat(storedFormat)) setLinkFormat(storedFormat);
     } catch {
       // 保存値が読めなければ既定のモデルのまま
     }
@@ -95,6 +110,15 @@ export function RewriteWorkbench({
     setModelId(next);
     try {
       localStorage.setItem(MODEL_STORAGE_KEY, next);
+    } catch {
+      // 保存できなくても動作には影響しない
+    }
+  }
+
+  function changeLinkFormat(next: InternalLinkFormat) {
+    setLinkFormat(next);
+    try {
+      localStorage.setItem(LINK_FORMAT_STORAGE_KEY, next);
     } catch {
       // 保存できなくても動作には影響しない
     }
@@ -137,6 +161,7 @@ export function RewriteWorkbench({
           modelId,
           instruction: instructions[row.id]?.trim() || undefined,
           internalLinkArticleIds: (links[row.id] ?? []).map((l) => l.id),
+          internalLinkFormat: linkFormat,
           publishStatus,
           insertUpdatedNote,
         },
@@ -171,8 +196,33 @@ export function RewriteWorkbench({
     } finally {
       setBusyId(null);
       setLiveBody("");
+      // リライトで本文が変わるため、「リンク済み」の判定を含む候補はサーバーから取り直す
+      setFoundSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
       router.refresh();
     }
+  }
+
+  async function handleFind(articleIds: string[], force: boolean) {
+    if (articleIds.length === 0 || findingIds.size > 0) return;
+    setFindingIds(new Set(articleIds));
+    const result = await findLinkSuggestionsAction(articleIds, force);
+    setFindingIds(new Set());
+    if (!result.ok) return pushToast("error", result.error);
+    setFoundSuggestions((prev) => ({ ...prev, ...result.results }));
+    // 探し直した結果に含まれない(もう候補でない)記事のチェックは外す
+    setLinks((prev) => {
+      const next = { ...prev };
+      for (const id of articleIds) {
+        const keep = new Set((result.results[id] ?? []).map((s) => s.articleId));
+        next[id] = (next[id] ?? []).filter((c) => keep.has(c.id));
+      }
+      return next;
+    });
+    for (const f of result.failed) pushToast("error", `候補を探せませんでした: ${f.error}`);
   }
 
   async function handleRevert(row: RewriteRow) {
@@ -228,6 +278,13 @@ export function RewriteWorkbench({
           本文の先頭に「最終更新日」を入れる
         </label>
         {keyMissing && <p className="mt-3 text-sm font-semibold text-red-600">⚠ {keyMissing} が未設定のため、このモデルは使えません。</p>}
+        {linkStatus ? (
+          <LinkIndexPanel initialStatus={linkStatus} onError={(m) => pushToast("error", m)} disabled={busyId !== null || !keys.gemini} />
+        ) : (
+          <p className="mt-4 rounded-xl border border-accent bg-accent-soft p-3 text-xs">
+            ⚠ 内部リンク候補の機能に必要なテーブルがまだありません。ターミナルで <code>npx prisma migrate deploy</code> を実行してください(手動で記事を探してリンクを入れる機能は、そのまま使えます)。
+          </p>
+        )}
       </section>
 
       {toasts.length > 0 && (
@@ -250,6 +307,19 @@ export function RewriteWorkbench({
       )}
 
       {/* 記事一覧 */}
+      {linkStatus && indexedCount > 0 && rows.some((r) => r.suggestions === null && !foundSuggestions[r.id]) && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-xs">
+          <span className="text-foreground-muted">候補を探していない記事があります。このページの記事の内部リンク候補を、まとめて探せます(AIを使います)。</span>
+          <button
+            type="button"
+            onClick={() => handleFind(rows.filter((r) => r.suggestions === null && !foundSuggestions[r.id]).map((r) => r.id), false)}
+            disabled={busyId !== null || findingIds.size > 0 || Boolean(!keys.gemini)}
+            className={SECONDARY_BUTTON}
+          >
+            {findingIds.size > 0 ? "候補を探しています…" : "このページの候補をまとめて探す"}
+          </button>
+        </div>
+      )}
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-border bg-surface p-8 text-center text-sm text-foreground-muted">
           該当する記事がありません。
@@ -310,11 +380,17 @@ export function RewriteWorkbench({
                   className={`${INPUT_CLASS} mt-3`}
                 />
 
-                <LinkPicker
+                <LinkSuggestionsPanel
                   articleId={row.id}
+                  suggestions={foundSuggestions[row.id] ?? row.suggestions}
+                  indexedCount={indexedCount}
                   selected={selectedLinks}
-                  onChange={(next) => setLinks((prev) => ({ ...prev, [row.id]: next }))}
-                  disabled={busyId !== null}
+                  onSelectedChange={(next) => setLinks((prev) => ({ ...prev, [row.id]: next }))}
+                  format={linkFormat}
+                  onFormatChange={changeLinkFormat}
+                  finding={findingIds.has(row.id)}
+                  onFind={(force) => handleFind([row.id], force)}
+                  disabled={busyId !== null || (linkStatus !== null && !keys.gemini && indexedCount === 0)}
                 />
 
                 {isBusy && (
@@ -353,102 +429,5 @@ export function RewriteWorkbench({
         </ul>
       )}
     </div>
-  );
-}
-
-/** 内部リンク(あわせて読みたい)として本文へ挿入する自サイト記事を選ぶ。 */
-function LinkPicker({
-  articleId,
-  selected,
-  onChange,
-  disabled,
-}: {
-  articleId: string;
-  selected: LinkCandidate[];
-  onChange: (next: LinkCandidate[]) => void;
-  disabled: boolean;
-}) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<LinkCandidate[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
-
-  async function search() {
-    if (!query.trim()) return;
-    setSearching(true);
-    const result = await searchLinkCandidatesAction(query, articleId);
-    setSearching(false);
-    setSearched(true);
-    setResults(result.ok ? result.items : []);
-  }
-
-  const atLimit = selected.length >= MAX_INTERNAL_LINKS_PER_REWRITE;
-
-  return (
-    <details className="mt-3 rounded-xl border border-border px-3 py-2">
-      <summary className="cursor-pointer text-xs font-semibold">
-        内部リンクを入れる(任意){selected.length > 0 && ` — ${selected.length}件選択中`}
-      </summary>
-      <div className="mt-2">
-        {selected.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {selected.map((item) => (
-              <span key={item.id} className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium">
-                {item.title}
-                <button
-                  type="button"
-                  onClick={() => onChange(selected.filter((s) => s.id !== item.id))}
-                  disabled={disabled}
-                  aria-label={`「${item.title}」を外す`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void search();
-              }
-            }}
-            placeholder="公開中の記事をタイトルで検索"
-            disabled={disabled}
-            className={INPUT_CLASS}
-          />
-          <button type="button" onClick={search} disabled={disabled || searching || !query.trim()} className={`${SECONDARY_BUTTON} shrink-0`}>
-            {searching ? "検索中…" : "検索"}
-          </button>
-        </div>
-        {searched && results.length === 0 && <p className="mt-2 text-xs text-foreground-muted">該当する公開記事がありません。</p>}
-        {results.length > 0 && (
-          <ul className="mt-2 flex flex-col gap-1">
-            {results.map((item) => {
-              const checked = selected.some((s) => s.id === item.id);
-              return (
-                <li key={item.id}>
-                  <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1 text-xs hover:bg-surface-muted">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled || (!checked && atLimit)}
-                      onChange={() => onChange(checked ? selected.filter((s) => s.id !== item.id) : [...selected, item])}
-                      className="mt-0.5"
-                    />
-                    <span>{item.title}</span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {atLimit && <p className="mt-2 text-xs text-foreground-muted">1回のリライトで入れられる内部リンクは{MAX_INTERNAL_LINKS_PER_REWRITE}件までです。</p>}
-      </div>
-    </details>
   );
 }

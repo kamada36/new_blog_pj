@@ -3,6 +3,15 @@
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { finalizeRewrite, logRewrite, revertRewrite } from "@/lib/ai/articleStore";
+import {
+  getLinkIndexStatus,
+  indexNextBatch,
+  matchArticles,
+  resetLinkIndex,
+  type IndexBatchResult,
+} from "@/lib/ai/linkIndex";
+import type { LinkIndexStatus, LinkSuggestionView } from "@/lib/ai/linkTypes";
+import { describeAiError } from "@/lib/ai/provider";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -56,4 +65,42 @@ export async function searchLinkCandidatesAction(
     select: { id: true, title: true, slug: true },
   });
   return { ok: true, items };
+}
+
+/** 指定した記事ぶんの内部リンク候補を、AIが選別して保存する(最大10件)。force=trueで既存の結果も探し直す。 */
+export async function findLinkSuggestionsAction(
+  articleIds: string[],
+  force: boolean
+): Promise<
+  | { ok: true; results: Record<string, LinkSuggestionView[]>; failed: { articleId: string; error: string }[] }
+  | { ok: false; error: string }
+> {
+  if (!(await getSessionUser())) return { ok: false, error: SESSION_EXPIRED };
+  if (articleIds.length === 0) return { ok: true, results: {}, failed: [] };
+  try {
+    const { results, failed } = await matchArticles(articleIds, force);
+    return { ok: true, results, failed };
+  } catch (error) {
+    console.error("[rewrite] 内部リンク候補の選別に失敗しました:", error);
+    return { ok: false, error: describeAiError(error) };
+  }
+}
+
+/**
+ * 記事の要約索引を作る。索引の無い公開記事を15件ずつ要約するので、画面から remaining が 0 になるまで繰り返し呼ぶ。
+ * reset=true のときは、先に索引と候補をすべて消して作り直す。
+ */
+export async function indexLinksAction(input: {
+  excludeIds: string[];
+  reset: boolean;
+}): Promise<({ ok: true; status: LinkIndexStatus } & IndexBatchResult) | { ok: false; error: string }> {
+  if (!(await getSessionUser())) return { ok: false, error: SESSION_EXPIRED };
+  try {
+    if (input.reset) await resetLinkIndex();
+    const batch = await indexNextBatch(input.excludeIds.slice(0, 500));
+    return { ok: true, ...batch, status: await getLinkIndexStatus() };
+  } catch (error) {
+    console.error("[rewrite] 記事索引の作成に失敗しました:", error);
+    return { ok: false, error: describeAiError(error) };
+  }
 }
