@@ -37,6 +37,7 @@ model SiteSetting {
 
   // トップページ見出し(ヒーローセクション)の画像
   heroBackgroundUrl         String? // 背景画像
+  heroBackgroundMobileUrl   String? // 幅が狭い画面(1280px未満)用の縦長の背景画像。未設定時は heroBackgroundUrl を使う
   heroCharacterResilientUrl String? // キャラクター「レジサン」
   heroCharacterAikoUrl      String? // キャラクター「アイコ」
 

@@ -16,6 +16,28 @@ function prefersReducedMotion() {
 }
 
 /**
+ * el の、stage のパディングボックス左上からの位置(レイアウト上の位置)。
+ * getBoundingClientRect と違って transform の影響を受けないので、丸窓がゆっくり漂っている最中に測っても値がぶれない
+ * (漂う動きぶんは、窓の中の写真を CSS で逆方向に動かして打ち消している)。
+ */
+function layoutOffsetWithin(el: HTMLElement, stage: HTMLElement) {
+  let x = 0;
+  let y = 0;
+  let node: HTMLElement | null = el;
+  while (node && node !== stage) {
+    x += node.offsetLeft;
+    y += node.offsetTop;
+    const parent = node.offsetParent as HTMLElement | null;
+    if (parent && parent !== stage) {
+      x += parent.clientLeft;
+      y += parent.clientTop;
+    }
+    node = parent;
+  }
+  return { x, y };
+}
+
+/**
  * コーヒーの一滴を落として波紋を広げるセクション。
  * クリック(タップ)した位置に加えて、一定間隔でランダムな位置にも自動で落ちる。
  * リンクやボタンの操作は邪魔しないよう、それらの上で押されたときは何もしない。
@@ -40,15 +62,12 @@ export function RippleStage({ children, className = "" }: { children: ReactNode;
 
     const measure = () => {
       // 背景写真は inset-0 (=パディングボックス)に敷いているので、境界線を含まない client* の寸法で合わせる
-      const stageRect = stage.getBoundingClientRect();
-      const originX = stageRect.left + stage.clientLeft;
-      const originY = stageRect.top + stage.clientTop;
       stage.style.setProperty("--stage-w", `${stage.clientWidth}px`);
       stage.style.setProperty("--stage-h", `${stage.clientHeight}px`);
       for (const el of peepholes) {
-        const rect = el.getBoundingClientRect();
-        el.style.setProperty("--peek-x", `${originX - rect.left - el.clientLeft}px`);
-        el.style.setProperty("--peek-y", `${originY - rect.top - el.clientTop}px`);
+        const { x, y } = layoutOffsetWithin(el, stage);
+        el.style.setProperty("--peek-x", `${-(x + el.clientLeft)}px`);
+        el.style.setProperty("--peek-y", `${-(y + el.clientTop)}px`);
       }
       stage.dataset.peekReady = "true";
     };

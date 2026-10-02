@@ -1,11 +1,20 @@
 import Link from "next/link";
-import Image from "next/image";
-import type { CSSProperties } from "react";
+import Image, { getImageProps } from "next/image";
+import type { CSSProperties, ReactNode } from "react";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { CoffeeDrop, COFFEE_DROP_FALL_MS } from "./CoffeeDrop";
 import { RippleStage } from "./RippleStage";
 
 const CATCHPHRASE = "この一杯から始まる、IT転職への道しるべ";
+
+/** キャッチコピーを「、」で区切ったまとまり(start は文字列全体での先頭の文字位置)。折り返しはこの単位で行う。 */
+const CATCHPHRASE_SEGMENTS = CATCHPHRASE.split(/(?<=、)/).reduce<{ text: string; start: number }[]>(
+  (segments, text) => {
+    const prev = segments[segments.length - 1];
+    return [...segments, { text, start: prev ? prev.start + [...prev.text].length : 0 }];
+  },
+  []
+);
 
 /*
  * 演出のタイムライン(ms)。
@@ -47,26 +56,89 @@ type HeroWindow = { x: number; y: number; w: number; h: number };
 function circleWindow(x: number, y: number, w: number): HeroWindow {
   return { x, y, w, h: w * WINDOW_GROUP_RATIO };
 }
-const HERO_WINDOWS: HeroWindow[] = [
+
+/**
+ * 表示後に円がゆっくり漂う軌道。初期位置 → 1点目 → 2点目 → 初期位置 と巡回する(px)。
+ * 円ごとに向き・大きさ・周期を変えて、揃って動いているように見えないようにする。
+ */
+type Orbit = { x1: number; y1: number; x2: number; y2: number; durationS: number };
+
+const HERO_WINDOWS: { box: HeroWindow; orbit: Orbit }[] = [
   // 左下の大きな円: 写真の主役(コーヒーカップ)が来るあたり
-  circleWindow(-12, 34, 54),
+  { box: circleWindow(-12, 34, 54), orbit: { x1: 10, y1: -8, x2: -6, y2: 10, durationS: 22 } },
   // 上の中くらいの円(左下の円と少し重なる)
-  circleWindow(24, 0, 40),
+  { box: circleWindow(24, 0, 40), orbit: { x1: -12, y1: 8, x2: 8, y2: 12, durationS: 19 } },
   // 右の大きめの円(上の円と少し重なり、右端からはみ出す)
-  circleWindow(58, 18, 46),
+  { box: circleWindow(58, 18, 46), orbit: { x1: -10, y1: -10, x2: -14, y2: 6, durationS: 24 } },
   // 下の小さな円
-  circleWindow(44, 70, 20),
+  { box: circleWindow(44, 70, 20), orbit: { x1: 12, y1: -6, x2: 6, y2: -14, durationS: 16 } },
 ];
 
 /** テキスト側の余白に浮かべる小窓(PCのみ)。位置はテキスト列に対するTailwindクラスで指定する。 */
-const SMALL_WINDOWS = [
-  "-top-36 right-16 h-32 w-32",
-  "-bottom-28 right-20 h-28 w-28",
-  "-bottom-28 -left-6 h-24 w-24",
+const SMALL_WINDOWS: { className: string; orbit: Orbit }[] = [
+  { className: "-top-28 right-16 h-32 w-32", orbit: { x1: 8, y1: 8, x2: -6, y2: 12, durationS: 18 } },
+  { className: "-bottom-28 right-20 h-28 w-28", orbit: { x1: -8, y1: -6, x2: 6, y2: -10, durationS: 21 } },
+  { className: "-bottom-28 -left-6 h-24 w-24", orbit: { x1: 6, y1: -8, x2: 10, y2: 4, durationS: 17 } },
 ];
 
 function windowBox({ x, y, w, h }: HeroWindow): CSSProperties {
   return { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` };
+}
+
+function orbitStyle({ x1, y1, x2, y2, durationS }: Orbit): CSSProperties {
+  return {
+    "--orbit-x1": `${x1}px`,
+    "--orbit-y1": `${y1}px`,
+    "--orbit-x2": `${x2}px`,
+    "--orbit-y2": `${y2}px`,
+    "--orbit-dur": `${durationS}s`,
+  } as CSSProperties;
+}
+
+/** 背景写真の出し分け。mobileSrc があれば、幅が狭い画面(1280px未満=縦積みレイアウト)ではそちらを使う。 */
+type HeroPhotoSource = { src: string; mobileSrc: string | null };
+
+/** 縦積みレイアウトに切り替わる幅。globals.css の .hero-veil、Tailwind の xl: と揃えている。 */
+const WIDE_LAYOUT_MEDIA = "(min-width: 1280px)";
+
+/**
+ * 丸窓1つ分。外側(hero-orbit)が円ごとゆっくり漂い、内側の円は中心から広がるように現れる。
+ * 漂う動きぶんは窓の中の写真を逆向きに同じだけ動かして打ち消すので、円が動いても景色は背景とつながったまま。
+ */
+function Peephole({
+  photo,
+  orbit,
+  revealDelayMs,
+  className = "",
+  style,
+  fallback,
+}: {
+  photo: HeroPhotoSource | null;
+  orbit: Orbit;
+  revealDelayMs: number;
+  className?: string;
+  style?: CSSProperties;
+  fallback?: ReactNode;
+}) {
+  return (
+    <div aria-hidden className={`hero-orbit absolute ${className}`} style={{ ...style, ...orbitStyle(orbit) }}>
+      <div
+        data-peephole
+        className={`hero-window-open absolute inset-0 rounded-full ${photo ? "" : "bg-accent-soft"}`}
+        style={delay(revealDelayMs)}
+      >
+        {photo ? <PeepholeImage photo={photo} /> : fallback}
+      </div>
+      {/* 開くのと同時に外側へ広がる波紋の輪 */}
+      {[0, 1].map((ring) => (
+        <span
+          key={ring}
+          className="hero-window-ripple"
+          style={delay(revealDelayMs + ring * 260)}
+        />
+      ))}
+    </div>
+  );
 }
 
 /**
@@ -74,10 +146,10 @@ function windowBox({ x, y, w, h }: HeroWindow): CSSProperties {
  * 窓の位置ぶんだけずらして置く(ずらす量は RippleStage が実測して --peek-x / --peek-y に入れる)。
  * これで、どの窓からも「背景全面にある1枚の写真」の該当部分が覗いて見える。
  */
-function PeepholeImage({ src }: { src: string }) {
+function PeepholeImage({ photo }: { photo: HeroPhotoSource }) {
   return (
     <div className="hero-peephole-img">
-      <HeroPhoto src={src} />
+      <HeroPhoto photo={photo} />
     </div>
   );
 }
@@ -86,19 +158,31 @@ function PeepholeImage({ src }: { src: string }) {
  * 背景写真の本体。背景全面と各丸窓のどちらもこれを「セクションと同じ大きさの枠」に置くので、
  * 写真の切り取り方・動きが完全に一致し、窓から覗く景色と透けて見える景色がつながる。
  */
-function HeroPhoto({ src, priority = false }: { src: string; priority?: boolean }) {
+function HeroPhoto({ photo, eager = false }: { photo: HeroPhotoSource; eager?: boolean }) {
+  const common = { alt: "", fill: true, sizes: "100vw", className: "hero-kenburns object-cover" } as const;
+
+  let image: ReactNode;
+  if (!photo.mobileSrc) {
+    image = <Image {...common} src={photo.src} alt="" preload={eager} />;
+  } else {
+    // 画面幅で画像を差し替える(アートディレクション)。<picture> なのでブラウザは幅に合う1枚だけを読み込む。
+    const {
+      props: { srcSet: wideSrcSet },
+    } = getImageProps({ ...common, src: photo.src });
+    const {
+      props: { srcSet: narrowSrcSet, ...rest },
+    } = getImageProps({ ...common, src: photo.mobileSrc });
+    image = (
+      <picture>
+        <source media={WIDE_LAYOUT_MEDIA} srcSet={wideSrcSet} sizes={common.sizes} />
+        <img {...rest} srcSet={narrowSrcSet} alt="" loading="eager" fetchPriority={eager ? "high" : undefined} />
+      </picture>
+    );
+  }
+
   return (
     <div className="hero-photo-frame">
-      <div className="hero-drift absolute inset-0">
-        <Image
-          src={src}
-          alt=""
-          fill
-          priority={priority}
-          sizes="100vw"
-          className="hero-kenburns object-cover"
-        />
-      </div>
+      <div className="hero-drift absolute inset-0">{image}</div>
     </div>
   );
 }
@@ -119,24 +203,31 @@ export function Hero({
   tagline,
   siteUrl,
   backgroundUrl,
+  backgroundMobileUrl,
   characterResilientUrl,
   characterAikoUrl,
 }: {
   tagline: string;
   siteUrl: string;
   backgroundUrl: string | null;
+  /** 幅が狭い画面(1280px未満)用の縦長の背景画像。未設定なら backgroundUrl をそのまま使う */
+  backgroundMobileUrl: string | null;
   characterResilientUrl: string | null;
   characterAikoUrl: string | null;
 }) {
-  const chars = [...CATCHPHRASE];
-  const center = (chars.length - 1) / 2;
+  const center = ([...CATCHPHRASE].length - 1) / 2;
+  // 片方しか設定されていなければ、その1枚をすべての画面幅で使う
+  const photoSrc = backgroundUrl ?? backgroundMobileUrl;
+  const photo: HeroPhotoSource | null = photoSrc
+    ? { src: photoSrc, mobileSrc: backgroundUrl ? backgroundMobileUrl : null }
+    : null;
 
   return (
     <RippleStage className="hero-stage relative overflow-hidden border-b border-border">
       {/* 背景全面の写真(薄く透けて見える)。丸窓からは同じ写真がくっきり覗く */}
-      {backgroundUrl && (
+      {photo && (
         <div aria-hidden className="hero-backdrop pointer-events-none absolute inset-0">
-          <HeroPhoto src={backgroundUrl} priority />
+          <HeroPhoto photo={photo} eager />
         </div>
       )}
       <div aria-hidden className="hero-veil pointer-events-none absolute inset-0" />
@@ -159,7 +250,7 @@ export function Hero({
       <svg
         aria-hidden
         viewBox="0 0 400 400"
-        className="hero-fade pointer-events-none absolute -bottom-40 right-[42%] hidden w-[300px] -rotate-12 overflow-visible text-accent opacity-[0.1] lg:block"
+        className="hero-fade pointer-events-none absolute -bottom-40 right-[42%] hidden w-[300px] -rotate-12 overflow-visible text-accent opacity-[0.1] xl:block"
         style={delay(T.open + 200)}
       >
         <g className="hero-ring-breathe" style={{ animationDelay: "2s" }}>
@@ -168,12 +259,12 @@ export function Hero({
         <circle className="hero-ring-wave" cx="200" cy="200" r="150" fill="none" stroke="currentColor" strokeWidth="2" style={{ animationDelay: "6.5s" }} />
       </svg>
 
-      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-14 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,600px)] lg:gap-10 lg:pb-14 lg:pt-14">
+      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-14 pt-12 sm:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,600px)] xl:gap-10 xl:pb-14 xl:pt-14">
         {/* ---- テキスト側 ---- */}
-        <div className="relative flex flex-col items-center text-center lg:items-start lg:pl-14 lg:text-left">
+        <div className="relative z-10 flex flex-col items-center text-center xl:items-start xl:pl-14 xl:text-left">
           {/* 縦書きの読み仮名(PCのみ) */}
           <p
-            className="hero-fade absolute left-0 top-1 hidden items-center gap-3 font-display text-xs tracking-[0.55em] text-foreground-muted [writing-mode:vertical-rl] lg:flex"
+            className="hero-fade absolute left-0 top-1 hidden items-center gap-3 font-display text-xs tracking-[0.55em] text-foreground-muted [writing-mode:vertical-rl] xl:flex"
             style={delay(T.brandSub)}
           >
             レジリエンサーカフェ
@@ -190,20 +281,20 @@ export function Hero({
             <span className="font-normal tracking-wider opacity-70">{hostLabel(siteUrl)}</span>
           </p>
 
-          <div className="relative mt-5 flex flex-col items-center lg:block">
+          <div className="relative mt-5 flex flex-col items-center xl:block">
             <h1 className="font-brand italic leading-[0.9] text-foreground">
               <span className="block overflow-hidden pb-[0.2em] pr-[0.12em]">
                 <span className="hero-rise block text-[3.4rem] sm:text-7xl lg:text-[5.4rem]" style={delay(T.brandMain)}>
                   Resilient-cer
                 </span>
               </span>
-              <span className="-mt-[0.12em] block overflow-hidden pb-[0.24em] pr-[0.12em] lg:pl-[1.6em]">
+              <span className="-mt-[0.12em] block overflow-hidden pb-[0.24em] pr-[0.12em] xl:pl-[1.6em]">
                 <span
                   className="hero-rise inline-flex items-baseline gap-3 text-[3.4rem] text-accent-dark sm:text-7xl lg:text-[5.4rem]"
                   style={delay(T.brandSub)}
                 >
                   cafe
-                  <span className="font-display text-xs not-italic tracking-[0.35em] text-foreground-muted lg:hidden">
+                  <span className="font-display text-xs not-italic tracking-[0.35em] text-foreground-muted xl:hidden">
                     レジリエンサーカフェ
                   </span>
                 </span>
@@ -212,7 +303,7 @@ export function Hero({
   
             {/* キャラクター2人: タイトルのそば(PCは「cafe」の右横、スマホはタイトルの下)に並んで顔を出す */}
             {(characterResilientUrl || characterAikoUrl) && (
-              <div className="mt-2 flex items-end gap-1 lg:absolute lg:bottom-3 lg:left-40 lg:mt-0">
+              <div className="mt-2 flex items-end gap-1 xl:absolute xl:bottom-3 xl:left-40 xl:mt-0">
                 {[
                   { src: characterResilientUrl, alt: "レジサン" },
                   { src: characterAikoUrl, alt: "アイコ" },
@@ -242,13 +333,21 @@ export function Hero({
           <p className="relative mt-5 inline-block font-display text-base font-medium tracking-wide text-foreground sm:text-lg">
             <span className="hero-surface-line" style={delay(IMPACT_MS)} />
             <CoffeeDrop delayMs={T.drop} style={{ left: "50%", top: "calc(100% + 6px)" }} />
-            {chars.map((char, index) => (
-              <span
-                key={index}
-                className="hero-char-ripple inline-block"
-                style={delay(IMPACT_MS + 80 + Math.abs(index - center) * 55)}
-              >
-                {char}
+            {/* 狭い画面で折り返すときは「、」の後ろだけで改行し、単語の途中で切れないようにする */}
+            {CATCHPHRASE_SEGMENTS.map((segment) => (
+              <span key={segment.start} className="inline-block whitespace-nowrap">
+                {[...segment.text].map((char, offset) => {
+                  const index = segment.start + offset;
+                  return (
+                    <span
+                      key={index}
+                      className="hero-char-ripple inline-block"
+                      style={delay(IMPACT_MS + 80 + Math.abs(index - center) * 55)}
+                    >
+                      {char}
+                    </span>
+                  );
+                })}
               </span>
             ))}
           </p>
@@ -266,41 +365,37 @@ export function Hero({
           </div>
 
           {/* テキスト側の余白に浮かぶ小窓(PCのみ) */}
-          {backgroundUrl &&
-            SMALL_WINDOWS.map((className, index) => (
-              <div
+          {photo &&
+            SMALL_WINDOWS.map((win, index) => (
+              <Peephole
                 key={index}
-                aria-hidden
-                data-peephole
-                className={`hero-arch absolute hidden overflow-hidden rounded-full lg:block ${className}`}
-                style={delay(T.arch + 500 + index * 180)}
-              >
-                <PeepholeImage src={backgroundUrl} />
-              </div>
+                photo={photo}
+                orbit={win.orbit}
+                revealDelayMs={T.arch + 500 + index * 180}
+                className={`-z-10 hidden xl:block ${win.className}`}
+              />
             ))}
         </div>
 
         {/* ---- ビジュアル側: 大きさの違う丸窓から、背景全面の写真が覗いて見える ----
             PCでは列の幅より少し大きくして右端へはみ出させ、窓を大きく見せる */}
-        <div className="relative mx-auto w-full max-w-[460px] sm:max-w-[560px] lg:w-[112%] lg:max-w-none">
+        <div className="relative z-0 mx-auto w-full max-w-[460px] sm:max-w-[520px] lg:max-w-[560px] xl:w-[112%] xl:max-w-none">
           <div className="relative aspect-[4/3]">
             {HERO_WINDOWS.map((win, index) => (
-              <div
+              <Peephole
                 key={index}
-                data-peephole
-                className={`hero-arch absolute overflow-hidden rounded-full ${backgroundUrl ? "" : "bg-accent-soft"}`}
-                style={{ ...windowBox(win), ...delay(T.arch + index * 160) }}
-              >
-                {backgroundUrl ? (
-                  <PeepholeImage src={backgroundUrl} />
-                ) : (
-                  index === 1 && (
+                photo={photo}
+                orbit={win.orbit}
+                revealDelayMs={T.arch + index * 160}
+                style={windowBox(win.box)}
+                fallback={
+                  index === 0 && (
                     <div className="flex h-full items-center justify-center text-accent-dark">
                       <IconMug className="h-20 w-20" />
                     </div>
                   )
-                )}
-              </div>
+                }
+              />
             ))}
 
             {/* タグラインが回り続ける円形バッジ(中心のマグは固定)。右上の余白に置く */}

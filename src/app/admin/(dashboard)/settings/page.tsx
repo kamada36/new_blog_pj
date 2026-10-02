@@ -139,19 +139,25 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           <HeroImageField
             name="heroBackground"
             label="背景画像"
-            hint="見出しセクション全体に敷く横長の画像を想定しています。"
+            hint="見出しセクション全体に敷く横長の画像を想定しています。画面幅が1280px以上のときに使われます。"
             currentUrl={setting.heroBackgroundUrl}
+          />
+          <HeroImageField
+            name="heroBackgroundMobile"
+            label="背景画像（タブレット・スマホ用）"
+            hint="画面幅が1280px未満のときに使う縦長の画像です（縦横比 3:4〜9:16 程度を推奨）。未設定の場合は上の背景画像を使います。"
+            currentUrl={setting.heroBackgroundMobileUrl}
           />
           <HeroImageField
             name="heroCharacterResilient"
             label="キャラクター「レジサン」"
-            hint="背景の透過PNGを想定しています。見出しの左側に表示されます。"
+            hint="背景の透過PNGを想定しています。タイトルの横に2人並んで表示されます。"
             currentUrl={setting.heroCharacterResilientUrl}
           />
           <HeroImageField
             name="heroCharacterAiko"
             label="キャラクター「アイコ」"
-            hint="背景の透過PNGを想定しています。見出しの右側に表示されます。"
+            hint="背景の透過PNGを想定しています。タイトルの横に2人並んで表示されます。"
             currentUrl={setting.heroCharacterAikoUrl}
           />
 

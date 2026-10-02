@@ -47,6 +47,7 @@ export default async function HomePage() {
         tagline={siteSetting.tagline}
         siteUrl={siteUrl}
         backgroundUrl={siteSetting.heroBackgroundUrl}
+        backgroundMobileUrl={siteSetting.heroBackgroundMobileUrl}
         characterResilientUrl={siteSetting.heroCharacterResilientUrl}
         characterAikoUrl={siteSetting.heroCharacterAikoUrl}
       />
@@ -85,7 +86,7 @@ export default async function HomePage() {
                     title={section.category.name}
                     href={`/category/${section.category.slug}`}
                   />
-                  <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5">
+                  <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
                     {section.articles.map((article) => (
                       <ArticleRowCard
                         key={article.id}
