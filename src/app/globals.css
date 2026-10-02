@@ -100,7 +100,7 @@ body {
 }
 
 /* テキスト側だけ地の色を少し戻して、透けた写真の上でも文字が読みやすいようにする。
-   縦積み(1280px未満)では文字が上にあるので上から、2列(1280px以上)では文字が左にあるので左から掛ける。 */
+   縦積み(1024px未満)では文字が上にあるので上から、2列(1024px以上)では文字が左にあるので左から掛ける。 */
 .hero-veil {
   background: linear-gradient(
     to bottom,
@@ -110,7 +110,7 @@ body {
   );
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .hero-veil {
     background: linear-gradient(
       to right,

@@ -98,11 +98,11 @@ function orbitStyle({ x1, y1, x2, y2, durationS }: Orbit): CSSProperties {
   } as CSSProperties;
 }
 
-/** 背景写真の出し分け。mobileSrc があれば、幅が狭い画面(1280px未満=縦積みレイアウト)ではそちらを使う。 */
+/** 背景写真の出し分け。mobileSrc があれば、幅が狭い画面(1024px未満=縦積みレイアウト)ではそちらを使う。 */
 type HeroPhotoSource = { src: string; mobileSrc: string | null };
 
-/** 縦積みレイアウトに切り替わる幅。globals.css の .hero-veil、Tailwind の xl: と揃えている。 */
-const WIDE_LAYOUT_MEDIA = "(min-width: 1280px)";
+/** 縦積みレイアウトに切り替わる幅。globals.css の .hero-veil、Hero 内の Tailwind の lg: と揃えている。 */
+const WIDE_LAYOUT_MEDIA = "(min-width: 1024px)";
 
 /**
  * 丸窓1つ分。外側(hero-orbit)が円ごとゆっくり漂い、内側の円は中心から広がるように現れる。
@@ -206,7 +206,7 @@ export function Hero({
 }: {
   tagline: string;
   backgroundUrl: string | null;
-  /** 幅が狭い画面(1280px未満)用の縦長の背景画像。未設定なら backgroundUrl をそのまま使う */
+  /** 幅が狭い画面(1024px未満)用の縦長の背景画像。未設定なら backgroundUrl をそのまま使う */
   backgroundMobileUrl: string | null;
   characterResilientUrl: string | null;
   characterAikoUrl: string | null;
@@ -246,7 +246,7 @@ export function Hero({
       <svg
         aria-hidden
         viewBox="0 0 400 400"
-        className="hero-fade pointer-events-none absolute -bottom-40 right-[42%] hidden w-[300px] -rotate-12 overflow-visible text-accent opacity-[0.1] xl:block"
+        className="hero-fade pointer-events-none absolute -bottom-40 right-[42%] hidden w-[300px] -rotate-12 overflow-visible text-accent opacity-[0.1] lg:block"
         style={delay(T.open + 200)}
       >
         <g className="hero-ring-breathe" style={{ animationDelay: "2s" }}>
@@ -255,12 +255,12 @@ export function Hero({
         <circle className="hero-ring-wave" cx="200" cy="200" r="150" fill="none" stroke="currentColor" strokeWidth="2" style={{ animationDelay: "6.5s" }} />
       </svg>
 
-      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-14 pt-12 sm:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,600px)] xl:gap-10 xl:pb-14 xl:pt-14">
+      <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-14 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,480px)] xl:grid-cols-[minmax(0,1fr)_minmax(0,600px)] lg:gap-10 lg:pb-14 lg:pt-14">
         {/* ---- テキスト側 ---- */}
-        <div className="relative z-10 flex flex-col items-center text-center xl:items-start xl:pl-14 xl:text-left">
+        <div className="relative z-10 flex flex-col items-center text-center lg:items-start lg:pl-14 lg:text-left">
           {/* 縦書きの読み仮名(PCのみ) */}
           <p
-            className="hero-fade absolute left-0 top-1 hidden items-center gap-3 font-display text-xs tracking-[0.55em] text-foreground-muted [writing-mode:vertical-rl] xl:flex"
+            className="hero-fade absolute left-0 top-1 hidden items-center gap-3 font-display text-xs tracking-[0.55em] text-foreground-muted [writing-mode:vertical-rl] lg:flex"
             style={delay(T.brandSub)}
           >
             レジリエンサーカフェ
@@ -277,9 +277,9 @@ export function Hero({
             <span className="font-normal tracking-wider opacity-70">{SITE_DISPLAY_URL}</span>
           </p>
 
-          <div className="relative mt-5 flex flex-col items-center xl:block">
+          <div className="relative mt-5 flex flex-col items-center lg:block">
             {/* 文字サイズは h1 に指定し、各行の余白(em)をタイトルの文字サイズ基準で効かせる */}
-            <h1 className="font-brand whitespace-nowrap text-[3.4rem] font-bold leading-[0.9] text-foreground sm:text-7xl lg:text-[5.4rem]">
+            <h1 className="font-brand whitespace-nowrap text-[3.4rem] font-bold leading-[0.9] text-foreground sm:text-7xl lg:text-[4.2rem] xl:text-[5.4rem]">
               <span className="block overflow-hidden pb-[0.05em]">
                 <span className="hero-rise block" style={{ ...delay(T.brandMain), "--rise-from": "150%" } as CSSProperties}>
                   Resilient-cer
@@ -287,13 +287,13 @@ export function Hero({
               </span>
               {/* 筆記体の「f」は下に長く伸びるので、せり上がり演出用の切り抜き枠の下に余白を多めに取り、
                   その分を負のマージンで打ち消して下の要素との間隔は変えない */}
-              <span className="-mb-[0.35em] -mt-[0.02em] block overflow-hidden pb-[0.4em] pr-[0.05em] xl:pl-[0.3em]">
+              <span className="-mb-[0.35em] -mt-[0.02em] block overflow-hidden pb-[0.4em] pr-[0.05em] lg:pl-[0.3em]">
                 <span
                   className="hero-rise inline-flex items-baseline gap-3 text-accent-dark"
                   style={{ ...delay(T.brandSub), "--rise-from": "200%" } as CSSProperties}
                 >
                   cafe
-                  <span className="font-display text-xs font-normal tracking-[0.35em] text-foreground-muted xl:hidden">
+                  <span className="font-display text-xs font-normal tracking-[0.35em] text-foreground-muted lg:hidden">
                     レジリエンサーカフェ
                   </span>
                 </span>
@@ -302,7 +302,7 @@ export function Hero({
 
             {/* キャラクター2人: タイトルのそば(PCは「cafe」の右横、スマホはタイトルの下)に並んで顔を出す */}
             {(characterResilientUrl || characterAikoUrl) && (
-              <div className="mt-4 flex items-end gap-1 xl:absolute xl:-bottom-2 xl:left-40 xl:mt-0">
+              <div className="mt-4 flex items-end gap-1 lg:absolute lg:-bottom-2 lg:left-40 lg:mt-0">
                 {[
                   { src: characterResilientUrl, alt: "レジサン" },
                   { src: characterAikoUrl, alt: "アイコ" },
@@ -372,14 +372,14 @@ export function Hero({
                 orbit={win.orbit}
                 ripplePeriodS={win.ripplePeriodS}
                 revealDelayMs={T.arch + 500 + index * 180}
-                className={`-z-10 hidden xl:block ${win.className}`}
+                className={`-z-10 hidden lg:block ${win.className}`}
               />
             ))}
         </div>
 
         {/* ---- ビジュアル側: 大きさの違う丸窓から、背景全面の写真が覗いて見える ----
             PCでは列の幅より少し大きくして右端へはみ出させ、窓を大きく見せる */}
-        <div className="relative z-0 mx-auto w-full max-w-[460px] sm:max-w-[520px] lg:max-w-[560px] xl:w-[112%] xl:max-w-none">
+        <div className="relative z-0 mx-auto w-full max-w-[460px] sm:max-w-[520px] lg:w-[104%] lg:max-w-none xl:w-[112%]">
           <div className="relative aspect-[4/3]">
             {HERO_WINDOWS.map((win, index) => (
               <Peephole
@@ -401,7 +401,7 @@ export function Hero({
 
             {/* タグラインが回り続ける円形バッジ(中心のマグは固定)。右上の余白に置く */}
             <div
-              className="hero-badge absolute -top-4 left-[74%] z-10 h-24 w-24 sm:h-28 sm:w-28 lg:-top-6 lg:left-[76%] lg:h-32 lg:w-32"
+              className="hero-badge absolute -top-4 left-[74%] z-10 h-24 w-24 sm:h-28 sm:w-28 lg:-top-6 lg:left-[68%] lg:h-28 lg:w-28 xl:left-[76%] xl:h-32 xl:w-32"
               style={delay(T.badge)}
             >
               <div className="relative h-full w-full rounded-full bg-surface text-accent-dark shadow-lg ring-1 ring-border">
