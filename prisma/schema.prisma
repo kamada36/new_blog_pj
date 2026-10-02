@@ -111,8 +111,41 @@ model Article {
   tags Tag[]
   views ArticleView[]
 
+  // AIリライト実行前の本文バックアップ(未確定の間だけ存在する。「元に戻す」で復元する)
+  rewriteBackup ArticleRewriteBackup?
+
   @@index([status, publishedAt])
   @@index([categoryId])
+}
+
+// AIリライト(/admin/rewrite)の「元に戻す」用バックアップ。
+// 記事ごとに1件だけ持ち、最初のリライト実行時にのみ作成する(連続リライトしても最初の原文を保つ)。
+// 「この内容で確定」または「元に戻す」で削除される。
+model ArticleRewriteBackup {
+  articleId           String    @id
+  originalContent     String
+  originalStatus      String
+  originalPublishedAt DateTime?
+  createdAt           DateTime  @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+// AIリライトの実行履歴。記事を削除しても履歴が残るよう、articleIdは外部キーにせずタイトルも複製して持つ。
+model ArticleRewriteLog {
+  id           String   @id @default(cuid())
+  articleId    String
+  articleTitle String
+  articleSlug  String   @default("")
+  status       String // "success" | "failed" | "reverted"
+  model        String   @default("")
+  instruction  String   @default("")
+  summary      String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([articleId])
 }
 
 // 記事の閲覧ログ（本日/週間/月間の集計、および重複アクセスの除外用）
