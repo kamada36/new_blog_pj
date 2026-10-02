@@ -223,10 +223,11 @@ body {
   animation: hero-fade-up 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-/* サイト名: 見えない枠の下から1行ずつせり上がる */
+/* サイト名: 見えない枠の下から1行ずつせり上がる。開始位置(--rise-from)は、枠が文字より下に広い行ほど大きくして、
+   せり上がり前に文字の一部が枠内に見えてしまわないようにする。 */
 @keyframes hero-rise {
   from {
-    transform: translateY(105%);
+    transform: translateY(var(--rise-from, 105%));
   }
 }
 
@@ -576,8 +577,14 @@ body {
 
 @keyframes coffee-ripple {
   0% {
-    opacity: 0.9;
+    /* 待ち時間(animation-delay)のあいだも backwards fill でこの状態が表示されるので、透明にしておく */
+    opacity: 0;
     transform: scale(0.04);
+    border-width: 3px;
+  }
+  2% {
+    opacity: 0.9;
+    transform: scale(0.05);
     border-width: 3px;
   }
   100% {

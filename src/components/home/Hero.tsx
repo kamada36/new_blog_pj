@@ -281,14 +281,17 @@ export function Hero({
             {/* 文字サイズは h1 に指定し、各行の余白(em)をタイトルの文字サイズ基準で効かせる */}
             <h1 className="font-brand whitespace-nowrap text-[3.4rem] font-bold leading-[0.9] text-foreground sm:text-7xl lg:text-[5.4rem]">
               <span className="block overflow-hidden pb-[0.05em]">
-                <span className="hero-rise block" style={delay(T.brandMain)}>
+                <span className="hero-rise block" style={{ ...delay(T.brandMain), "--rise-from": "150%" } as CSSProperties}>
                   Resilient-cer
                 </span>
               </span>
               {/* 筆記体の「f」は下に長く伸びるので、せり上がり演出用の切り抜き枠の下に余白を多めに取り、
                   その分を負のマージンで打ち消して下の要素との間隔は変えない */}
               <span className="-mb-[0.35em] -mt-[0.02em] block overflow-hidden pb-[0.4em] pr-[0.05em] xl:pl-[0.3em]">
-                <span className="hero-rise inline-flex items-baseline gap-3 text-accent-dark" style={delay(T.brandSub)}>
+                <span
+                  className="hero-rise inline-flex items-baseline gap-3 text-accent-dark"
+                  style={{ ...delay(T.brandSub), "--rise-from": "200%" } as CSSProperties}
+                >
                   cafe
                   <span className="font-display text-xs font-normal tracking-[0.35em] text-foreground-muted xl:hidden">
                     レジリエンサーカフェ
@@ -299,7 +302,7 @@ export function Hero({
 
             {/* キャラクター2人: タイトルのそば(PCは「cafe」の右横、スマホはタイトルの下)に並んで顔を出す */}
             {(characterResilientUrl || characterAikoUrl) && (
-              <div className="mt-2 flex items-end gap-1 xl:absolute xl:bottom-3 xl:left-40 xl:mt-0">
+              <div className="mt-4 flex items-end gap-1 xl:absolute xl:-bottom-2 xl:left-40 xl:mt-0">
                 {[
                   { src: characterResilientUrl, alt: "レジサン" },
                   { src: characterAikoUrl, alt: "アイコ" },
