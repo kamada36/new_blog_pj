@@ -7,7 +7,7 @@ export default async function EditArticlePage({ params }: PageProps<"/admin/arti
 
   const [article, categories, tags, shortcodes] = await Promise.all([
     prisma.article.findUnique({ where: { id }, include: { tags: true } }),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] }),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
     prisma.shortcode.findMany({ orderBy: { createdAt: "asc" } }),
   ]);

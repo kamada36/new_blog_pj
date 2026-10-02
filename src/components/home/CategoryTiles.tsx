@@ -25,8 +25,8 @@ export function CategoryTiles({
             className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-center transition-shadow hover:shadow-lg"
           >
             {category.iconUrl ? (
-              <span className="relative h-14 w-14 overflow-hidden rounded-full bg-accent-soft">
-                <Image src={category.iconUrl} alt="" fill className="object-cover" unoptimized />
+              <span className="relative h-14 w-14">
+                <Image src={category.iconUrl} alt="" fill className="object-contain" unoptimized />
               </span>
             ) : (
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent-dark transition-colors group-hover:bg-accent group-hover:text-accent-contrast">

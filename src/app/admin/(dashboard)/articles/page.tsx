@@ -54,7 +54,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
       orderBy: SORT_OPTIONS[sort].orderBy,
       include: { category: true },
     }),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] }),
   ]);
 
   const viewStatsMap = await getAdminViewStatsForArticles(articles);

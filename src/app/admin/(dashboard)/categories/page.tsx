@@ -12,7 +12,7 @@ function iconPreview(url: string) {
 
 export default async function AdminCategoriesPage({ searchParams }: PageProps<"/admin/categories">) {
   const { error } = await searchParams;
-  const categories = await prisma.category.findMany({ orderBy: { order: "asc" } });
+  const categories = await prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] });
 
   return (
     <div>

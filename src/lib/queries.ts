@@ -53,7 +53,7 @@ export const getPrimaryAuthor = cache(async function getPrimaryAuthor() {
 });
 
 export const getCategories = cache(async function getCategories() {
-  return prisma.category.findMany({ orderBy: { order: "asc" } });
+  return prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] });
 });
 
 // 記事本文中の [sc name="xxx"] ショートコード展開に使う、キャラクター吹き出しプリセット一覧。
