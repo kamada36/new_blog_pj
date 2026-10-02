@@ -64,6 +64,8 @@ type StoredState = {
   bannerLinks: BannerLinkInput[];
   outlineRaw: string;
   articleId: string | null;
+  /** 「最初からやり直す」まで残す(再生成・リロードでも消さない) */
+  eyecatchPrompt: string;
 };
 
 function readStored(): Partial<StoredState> | null {
@@ -145,7 +147,7 @@ export function GenerateWorkbench({
   const restoredRef = useRef(false);
 
   const busy = outlineBusy || articleBusy;
-  const hasResult = Boolean(content) || articleBusy;
+  const hasResult = Boolean(content) || Boolean(eyecatchPrompt) || articleBusy;
 
   // ── 入力内容の保存/復元(リロード・再ログインで作業が消えないように) ──
   useEffect(() => {
@@ -163,6 +165,7 @@ export function GenerateWorkbench({
     if (stored.textLinks?.length) setTextLinks(stored.textLinks);
     if (stored.bannerLinks?.length) setBannerLinks(stored.bannerLinks);
     if (typeof stored.outlineRaw === "string") setOutlineRaw(stored.outlineRaw);
+    if (typeof stored.eyecatchPrompt === "string") setEyecatchPrompt(stored.eyecatchPrompt);
     /* eslint-enable react-hooks/set-state-in-effect */
     if (stored.articleId) {
       void loadGeneratedArticleAction(stored.articleId).then((result) => {
@@ -192,8 +195,9 @@ export function GenerateWorkbench({
       bannerLinks,
       outlineRaw,
       articleId: article?.id ?? null,
+      eyecatchPrompt,
     });
-  }, [source, wordCount, outlineModel, articleModel, categoryId, withEyecatch, textLinks, bannerLinks, outlineRaw, article]);
+  }, [source, wordCount, outlineModel, articleModel, categoryId, withEyecatch, textLinks, bannerLinks, outlineRaw, article, eyecatchPrompt]);
 
   // ── 補助 ──
   const cost = useMemo(
@@ -230,7 +234,6 @@ export function GenerateWorkbench({
     setTagInput("");
     setSavedCategoryId("");
     setCoverImageUrl(null);
-    setEyecatchPrompt("");
     setDirty(false);
     setInstruction("");
   }
@@ -246,6 +249,7 @@ export function GenerateWorkbench({
     setBannerLinks([EMPTY_BANNER_LINK]);
     setNews([]);
     setMessage(null);
+    setEyecatchPrompt("");
     resetResult();
     writeStored(null);
   }
@@ -820,7 +824,7 @@ export function GenerateWorkbench({
             </div>
           )}
 
-          {!articleBusy && content && (
+          {!articleBusy && (content || eyecatchPrompt) && (
             <div className="rounded-xl border border-border p-4">
               <p className="text-xs font-semibold text-foreground-muted">アイキャッチ画像</p>
               <div className="mt-2 grid gap-4 sm:grid-cols-[16rem_1fr]">
@@ -879,11 +883,11 @@ export function GenerateWorkbench({
                 spellCheck={false}
                 className={`${INPUT_CLASS} font-mono text-xs leading-relaxed`}
               />
-            ) : (
+            ) : previewText || articleBusy ? (
               <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-background p-4">
                 {previewText ? <ArticleBody markdown={previewText} shortcodes={shortcodes} /> : <p className="text-sm text-foreground-muted">AIに接続しています…</p>}
               </div>
-            )}
+            ) : null}
           </div>
 
           {!articleBusy && content && (
