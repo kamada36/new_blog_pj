@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -12,11 +13,14 @@
     "import:wordpress-sql": "tsx scripts/import-wordpress-sql.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.71",
+    "@ai-sdk/google": "^4.0.87",
     "@aws-sdk/client-s3": "^3.1143.0",
     "@codemirror/lang-markdown": "^6.5.2",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@uiw/react-codemirror": "^4.25.11",
+    "ai": "^7.0.127",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "github-slugger": "^2.0.0",

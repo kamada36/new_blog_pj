@@ -111,8 +111,67 @@ model Article {
   tags Tag[]
   views ArticleView[]
 
+  // AIリライト実行前の本文バックアップ(未確定の間だけ存在する。「元に戻す」で復元する)
+  rewriteBackup ArticleRewriteBackup?
+
+  // 内部リンク提案(AIリライト)用の、記事の要約索引と、記事ごとの提案結果
+  linkIndex      ArticleLinkIndex?
+  linkSuggestion ArticleLinkSuggestion?
+
   @@index([status, publishedAt])
   @@index([categoryId])
+}
+
+// AIリライト(/admin/rewrite)の「元に戻す」用バックアップ。
+// 記事ごとに1件だけ持ち、最初のリライト実行時にのみ作成する(連続リライトしても最初の原文を保つ)。
+// 「この内容で確定」または「元に戻す」で削除される。
+model ArticleRewriteBackup {
+  articleId           String    @id
+  originalContent     String
+  originalStatus      String
+  originalPublishedAt DateTime?
+  createdAt           DateTime  @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+// AIリライトの実行履歴。記事を削除しても履歴が残るよう、articleIdは外部キーにせずタイトルも複製して持つ。
+model ArticleRewriteLog {
+  id           String   @id @default(cuid())
+  articleId    String
+  articleTitle String
+  articleSlug  String   @default("")
+  status       String // "success" | "failed" | "reverted"
+  model        String   @default("")
+  instruction  String   @default("")
+  summary      String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([articleId])
+}
+
+// 内部リンク提案用の記事索引。AIが作った「この記事は何を解説しているか」の要約とキーワード。
+// タイトル・URL・公開状態は Article から常に最新を引くため、ここには持たない。
+// リライトは記事の意味を変えないので、要約は一度作れば再生成しない(索引の作り直しは管理画面から)。
+model ArticleLinkIndex {
+  articleId    String   @id
+  summary      String
+  keywords     String[]
+  summarizedAt DateTime @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+// 記事ごとの内部リンク候補(最大3件)。suggestions は [{ "articleId": "...", "reason": "..." }] の配列。
+// 紹介先の記事が削除・非公開になった分は、表示時に取り除く。
+model ArticleLinkSuggestion {
+  articleId   String   @id
+  suggestions Json
+  computedAt  DateTime @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 }
 
 // 記事の閲覧ログ（本日/週間/月間の集計、および重複アクセスの除外用）
