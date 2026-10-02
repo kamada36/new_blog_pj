@@ -17,7 +17,6 @@ import {
 } from "@/lib/queries";
 import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export default async function HomePage() {
   const [siteSetting, categories, recentArticles, popularArticles, author] = await Promise.all([
@@ -45,16 +44,21 @@ export default async function HomePage() {
     <div className="pb-20">
       <Hero
         tagline={siteSetting.tagline}
-        siteUrl={siteUrl}
         backgroundUrl={siteSetting.heroBackgroundUrl}
         backgroundMobileUrl={siteSetting.heroBackgroundMobileUrl}
         characterResilientUrl={siteSetting.heroCharacterResilientUrl}
         characterAikoUrl={siteSetting.heroCharacterAikoUrl}
       />
 
-      <p className="py-3 text-center text-[11px] tracking-wide text-foreground-muted">
-        当サイトは広告収入を含むアフィリエイトリンクを利用しています。
-      </p>
+      {/* 見出しの直下に隙間なく続ける、上下2段のコーヒー色の帯 */}
+      <div className="hero-disclaimer">
+        <div aria-hidden className="hero-disclaimer-top" />
+        <p className="hero-disclaimer-bottom px-3 py-2 text-center text-[11px] tracking-normal sm:px-4 sm:text-[13px] sm:tracking-wide">
+          {/* 折り返すときは語の途中で切らず、2つのまとまりの間だけで改行する */}
+          <span className="inline-block">当サイトは広告収入を含む</span>
+          <span className="inline-block">アフィリエイトリンクを利用しています。</span>
+        </p>
+      </div>
 
       <Container className="mt-14">
         <CategoryTiles categories={categories} />

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Zen_Kaku_Gothic_New, Noto_Sans_JP, Cormorant_Garamond } from "next/font/google";
+import { Zen_Kaku_Gothic_New, Noto_Sans_JP, Dancing_Script } from "next/font/google";
 import "./globals.css";
 
 const bodyFont = Noto_Sans_JP({
@@ -14,11 +14,11 @@ const displayFont = Zen_Kaku_Gothic_New({
   weight: ["500", "700", "900"],
 });
 
-const brandFont = Cormorant_Garamond({
+// トップページのサイト名(Resilient-cer cafe)に使う筆記体
+const brandFont = Dancing_Script({
   variable: "--font-brand",
   subsets: ["latin"],
-  weight: ["500", "600"],
-  style: ["italic", "normal"],
+  weight: ["500", "700"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

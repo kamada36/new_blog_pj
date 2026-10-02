@@ -7,6 +7,9 @@ import { RippleStage } from "./RippleStage";
 
 const CATCHPHRASE = "この一杯から始まる、IT転職への道しるべ";
 
+/** 「OPEN」看板風ラベルに出すサイトのURL */
+const SITE_DISPLAY_URL = "https://resilient-cer.com";
+
 /** キャッチコピーを「、」で区切ったまとまり(start は文字列全体での先頭の文字位置)。折り返しはこの単位で行う。 */
 const CATCHPHRASE_SEGMENTS = CATCHPHRASE.split(/(?<=、)/).reduce<{ text: string; start: number }[]>(
   (segments, text) => {
@@ -63,22 +66,22 @@ function circleWindow(x: number, y: number, w: number): HeroWindow {
  */
 type Orbit = { x1: number; y1: number; x2: number; y2: number; durationS: number };
 
-const HERO_WINDOWS: { box: HeroWindow; orbit: Orbit }[] = [
+const HERO_WINDOWS: { box: HeroWindow; orbit: Orbit; ripplePeriodS: number }[] = [
   // 左下の大きな円: 写真の主役(コーヒーカップ)が来るあたり
-  { box: circleWindow(-12, 34, 54), orbit: { x1: 10, y1: -8, x2: -6, y2: 10, durationS: 22 } },
+  { box: circleWindow(-12, 34, 54), orbit: { x1: 34, y1: -22, x2: -18, y2: 28, durationS: 30 }, ripplePeriodS: 9 },
   // 上の中くらいの円(左下の円と少し重なる)
-  { box: circleWindow(24, 0, 40), orbit: { x1: -12, y1: 8, x2: 8, y2: 12, durationS: 19 } },
+  { box: circleWindow(24, 0, 40), orbit: { x1: -32, y1: 20, x2: 22, y2: 34, durationS: 26 }, ripplePeriodS: 11 },
   // 右の大きめの円(上の円と少し重なり、右端からはみ出す)
-  { box: circleWindow(58, 18, 46), orbit: { x1: -10, y1: -10, x2: -14, y2: 6, durationS: 24 } },
+  { box: circleWindow(58, 18, 46), orbit: { x1: -28, y1: -30, x2: -40, y2: 16, durationS: 32 }, ripplePeriodS: 10 },
   // 下の小さな円
-  { box: circleWindow(44, 70, 20), orbit: { x1: 12, y1: -6, x2: 6, y2: -14, durationS: 16 } },
+  { box: circleWindow(44, 70, 20), orbit: { x1: 30, y1: -16, x2: 14, y2: -34, durationS: 22 }, ripplePeriodS: 8 },
 ];
 
 /** テキスト側の余白に浮かべる小窓(PCのみ)。位置はテキスト列に対するTailwindクラスで指定する。 */
-const SMALL_WINDOWS: { className: string; orbit: Orbit }[] = [
-  { className: "-top-28 right-16 h-32 w-32", orbit: { x1: 8, y1: 8, x2: -6, y2: 12, durationS: 18 } },
-  { className: "-bottom-28 right-20 h-28 w-28", orbit: { x1: -8, y1: -6, x2: 6, y2: -10, durationS: 21 } },
-  { className: "-bottom-28 -left-6 h-24 w-24", orbit: { x1: 6, y1: -8, x2: 10, y2: 4, durationS: 17 } },
+const SMALL_WINDOWS: { className: string; orbit: Orbit; ripplePeriodS: number }[] = [
+  { className: "-top-28 right-16 h-32 w-32", orbit: { x1: 20, y1: 18, x2: -16, y2: 26, durationS: 24 }, ripplePeriodS: 12 },
+  { className: "-bottom-28 right-20 h-28 w-28", orbit: { x1: -22, y1: -14, x2: 16, y2: -24, durationS: 27 }, ripplePeriodS: 13 },
+  { className: "-bottom-28 -left-6 h-24 w-24", orbit: { x1: 16, y1: -20, x2: 24, y2: 10, durationS: 23 }, ripplePeriodS: 14 },
 ];
 
 function windowBox({ x, y, w, h }: HeroWindow): CSSProperties {
@@ -109,6 +112,7 @@ function Peephole({
   photo,
   orbit,
   revealDelayMs,
+  ripplePeriodS,
   className = "",
   style,
   fallback,
@@ -116,6 +120,8 @@ function Peephole({
   photo: HeroPhotoSource | null;
   orbit: Orbit;
   revealDelayMs: number;
+  /** 波紋の輪を繰り返す間隔(秒)。1回目は円が現れるのと同時 */
+  ripplePeriodS: number;
   className?: string;
   style?: CSSProperties;
   fallback?: ReactNode;
@@ -129,12 +135,12 @@ function Peephole({
       >
         {photo ? <PeepholeImage photo={photo} /> : fallback}
       </div>
-      {/* 開くのと同時に外側へ広がる波紋の輪 */}
+      {/* 外側へ広がる波紋の輪。円が開くのと同時に1回目が広がり、その後も一定間隔で繰り返す */}
       {[0, 1].map((ring) => (
         <span
           key={ring}
           className="hero-window-ripple"
-          style={delay(revealDelayMs + ring * 260)}
+          style={{ ...delay(revealDelayMs + ring * 260), animationDuration: `${ripplePeriodS}s` }}
         />
       ))}
     </div>
@@ -191,24 +197,14 @@ function delay(ms: number): CSSProperties {
   return { animationDelay: `${ms}ms` };
 }
 
-function hostLabel(siteUrl: string) {
-  try {
-    return new URL(siteUrl).host;
-  } catch {
-    return siteUrl;
-  }
-}
-
 export function Hero({
   tagline,
-  siteUrl,
   backgroundUrl,
   backgroundMobileUrl,
   characterResilientUrl,
   characterAikoUrl,
 }: {
   tagline: string;
-  siteUrl: string;
   backgroundUrl: string | null;
   /** 幅が狭い画面(1280px未満)用の縦長の背景画像。未設定なら backgroundUrl をそのまま使う */
   backgroundMobileUrl: string | null;
@@ -223,7 +219,7 @@ export function Hero({
     : null;
 
   return (
-    <RippleStage className="hero-stage relative overflow-hidden border-b border-border">
+    <RippleStage className="hero-stage relative overflow-hidden">
       {/* 背景全面の写真(薄く透けて見える)。丸窓からは同じ写真がくっきり覗く */}
       {photo && (
         <div aria-hidden className="hero-backdrop pointer-events-none absolute inset-0">
@@ -278,29 +274,29 @@ export function Hero({
           >
             <span className="hero-open-dot h-1.5 w-1.5 rounded-full bg-accent" />
             OPEN
-            <span className="font-normal tracking-wider opacity-70">{hostLabel(siteUrl)}</span>
+            <span className="font-normal tracking-wider opacity-70">{SITE_DISPLAY_URL}</span>
           </p>
 
           <div className="relative mt-5 flex flex-col items-center xl:block">
-            <h1 className="font-brand italic leading-[0.9] text-foreground">
-              <span className="block overflow-hidden pb-[0.2em] pr-[0.12em]">
-                <span className="hero-rise block text-[3.4rem] sm:text-7xl lg:text-[5.4rem]" style={delay(T.brandMain)}>
+            {/* 文字サイズは h1 に指定し、各行の余白(em)をタイトルの文字サイズ基準で効かせる */}
+            <h1 className="font-brand whitespace-nowrap text-[3.4rem] font-bold leading-[0.9] text-foreground sm:text-7xl lg:text-[5.4rem]">
+              <span className="block overflow-hidden pb-[0.05em]">
+                <span className="hero-rise block" style={delay(T.brandMain)}>
                   Resilient-cer
                 </span>
               </span>
-              <span className="-mt-[0.12em] block overflow-hidden pb-[0.24em] pr-[0.12em] xl:pl-[1.6em]">
-                <span
-                  className="hero-rise inline-flex items-baseline gap-3 text-[3.4rem] text-accent-dark sm:text-7xl lg:text-[5.4rem]"
-                  style={delay(T.brandSub)}
-                >
+              {/* 筆記体の「f」は下に長く伸びるので、せり上がり演出用の切り抜き枠の下に余白を多めに取り、
+                  その分を負のマージンで打ち消して下の要素との間隔は変えない */}
+              <span className="-mb-[0.35em] -mt-[0.02em] block overflow-hidden pb-[0.4em] pr-[0.05em] xl:pl-[0.3em]">
+                <span className="hero-rise inline-flex items-baseline gap-3 text-accent-dark" style={delay(T.brandSub)}>
                   cafe
-                  <span className="font-display text-xs not-italic tracking-[0.35em] text-foreground-muted xl:hidden">
+                  <span className="font-display text-xs font-normal tracking-[0.35em] text-foreground-muted xl:hidden">
                     レジリエンサーカフェ
                   </span>
                 </span>
               </span>
             </h1>
-  
+
             {/* キャラクター2人: タイトルのそば(PCは「cafe」の右横、スマホはタイトルの下)に並んで顔を出す */}
             {(characterResilientUrl || characterAikoUrl) && (
               <div className="mt-2 flex items-end gap-1 xl:absolute xl:bottom-3 xl:left-40 xl:mt-0">
@@ -371,6 +367,7 @@ export function Hero({
                 key={index}
                 photo={photo}
                 orbit={win.orbit}
+                ripplePeriodS={win.ripplePeriodS}
                 revealDelayMs={T.arch + 500 + index * 180}
                 className={`-z-10 hidden xl:block ${win.className}`}
               />
@@ -386,6 +383,7 @@ export function Hero({
                 key={index}
                 photo={photo}
                 orbit={win.orbit}
+                ripplePeriodS={win.ripplePeriodS}
                 revealDelayMs={T.arch + index * 160}
                 style={windowBox(win.box)}
                 fallback={

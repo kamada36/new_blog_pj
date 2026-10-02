@@ -250,15 +250,17 @@ body {
   animation: hero-window-open 1.3s cubic-bezier(0.15, 0.7, 0.3, 1) both;
 }
 
-/* 丸窓が開くのと同時に、外側へ広がって消えていく波紋の輪 */
+/* 丸窓から外側へ広がって消えていく波紋の輪。1回目は円が開くのと同時で、その後は円ごとの間隔
+   (animation-duration、Hero.tsx の ripplePeriodS)で繰り返す。周期の最初の2割で広がり、残りは休み。 */
 @keyframes hero-window-ripple {
   0% {
     opacity: 0;
     transform: scale(0.15);
   }
-  12% {
+  2% {
     opacity: 0.9;
   }
+  20%,
   100% {
     opacity: 0;
     transform: scale(1.35);
@@ -275,22 +277,39 @@ body {
     inset 0 0 0 1px color-mix(in srgb, var(--accent-dark) 20%, transparent);
   pointer-events: none;
   opacity: 0;
-  animation: hero-window-ripple 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) both;
+  animation: hero-window-ripple 10s cubic-bezier(0.2, 0.6, 0.3, 1) infinite both;
 }
 
 /* 表示後、円そのものがゆっくり漂う(軌道は円ごとに --orbit-* で指定)。
    窓の中の写真には同じ軌道を逆向きにかけて打ち消し、円が動いても景色は背景とつながったままにする。
    2つのアニメーションは同時に始まり、周期・緩急も同じなのでずれない。 */
+/* 軌道の大きさ(px)は1280px以上の画面基準。円が小さくなる狭い画面では、動く範囲も縮める。 */
+.hero-stage {
+  --orbit-scale: 0.5;
+}
+
+@media (min-width: 640px) {
+  .hero-stage {
+    --orbit-scale: 0.75;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-stage {
+    --orbit-scale: 1;
+  }
+}
+
 @keyframes hero-orbit {
   0%,
   100% {
     transform: translate(0, 0);
   }
   33% {
-    transform: translate(var(--orbit-x1), var(--orbit-y1));
+    transform: translate(calc(var(--orbit-x1) * var(--orbit-scale)), calc(var(--orbit-y1) * var(--orbit-scale)));
   }
   66% {
-    transform: translate(var(--orbit-x2), var(--orbit-y2));
+    transform: translate(calc(var(--orbit-x2) * var(--orbit-scale)), calc(var(--orbit-y2) * var(--orbit-scale)));
   }
 }
 
@@ -300,10 +319,10 @@ body {
     transform: translate(0, 0);
   }
   33% {
-    transform: translate(calc(var(--orbit-x1) * -1), calc(var(--orbit-y1) * -1));
+    transform: translate(calc(var(--orbit-x1) * var(--orbit-scale) * -1), calc(var(--orbit-y1) * var(--orbit-scale) * -1));
   }
   66% {
-    transform: translate(calc(var(--orbit-x2) * -1), calc(var(--orbit-y2) * -1));
+    transform: translate(calc(var(--orbit-x2) * var(--orbit-scale) * -1), calc(var(--orbit-y2) * var(--orbit-scale) * -1));
   }
 }
 
@@ -452,6 +471,34 @@ body {
 
 .hero-char-ripple {
   animation: hero-char-ripple 0.7s ease-out both;
+}
+
+/* --- 見出し直下の注記の帯 (src/app/(site)/page.tsx) ---
+   上段は深煎りのコーヒー色、下段はさらに濃いエスプレッソ色。境目にミルクのような細い線を引き、
+   文字はクレマのような明るいキャラメル色にする。ライト・ダークどちらのテーマでも同じ帯として見せる。 */
+.hero-disclaimer {
+  --disclaimer-top: #5a3d2b;
+  --disclaimer-bottom: #3f2a1e;
+  --disclaimer-line: rgba(241, 214, 176, 0.35);
+  --disclaimer-text: #f1cf9f;
+}
+
+.hero-disclaimer-top {
+  height: 1.75rem;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--disclaimer-top) 92%, white), var(--disclaimer-top));
+}
+
+.hero-disclaimer-bottom {
+  background: var(--disclaimer-bottom);
+  border-top: 1px solid var(--disclaimer-line);
+  color: var(--disclaimer-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero-disclaimer {
+    --disclaimer-top: #47301f;
+    --disclaimer-bottom: #2c1e15;
+  }
 }
 
 /* --- コーヒーの一滴と波紋 (src/components/home/CoffeeDrop.tsx) ---
