@@ -1,5 +1,3 @@
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { after } from "next/server";
@@ -15,7 +13,6 @@ import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
 import {
   getAdjacentArticles,
-  getArticleBySlug,
   getRelatedArticles,
   getShortcodes,
   recordArticleView,
@@ -24,34 +21,16 @@ import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { getSessionUser } from "@/lib/auth";
 import { getViewRequestContext } from "@/lib/analytics";
 
+import { contentPath } from "@/lib/slug";
+import { ArticleJsonLd } from "./ArticleJsonLd";
+import type { getArticleBySlug } from "@/lib/queries";
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export async function generateMetadata({ params }: PageProps<"/articles/[slug]">): Promise<Metadata> {
-  const { slug } = await params;
-  const article = await getArticleBySlug(decodeURIComponent(slug));
-  if (!article || article.status !== "published") return {};
+type PublishedArticle = NonNullable<Awaited<ReturnType<typeof getArticleBySlug>>>;
 
-  const title = article.metaTitle || article.title;
-  const description = article.metaDescription || article.excerpt;
-
-  return {
-    title,
-    description,
-    keywords: article.metaKeywords || undefined,
-    alternates: { canonical: `${siteUrl}/articles/${article.slug}` },
-    openGraph: {
-      title,
-      description,
-      type: "article",
-      images: article.coverImageUrl ? [article.coverImageUrl] : undefined,
-    },
-  };
-}
-
-export default async function ArticlePage({ params }: PageProps<"/articles/[slug]">) {
-  const { slug } = await params;
-  const article = await getArticleBySlug(decodeURIComponent(slug));
-  if (!article || article.status !== "published") notFound();
+/** 公開記事の表示。サイト直下の /{slug}/ から呼ばれる(現行WordPressのURLと同じ形)。 */
+export async function ArticleView({ article }: { article: PublishedArticle }) {
 
   // 管理者自身の閲覧、bot/クローラー、短時間の重複アクセスはカウントしない
   const sessionUser = await getSessionUser();
@@ -67,10 +46,11 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
   const relatedViewStatsMap = await getAdminViewStatsForArticles(related);
   const { prev, next } = await getAdjacentArticles(article);
   const shortcodes = await getShortcodes();
-  const articleUrl = `${siteUrl}/articles/${article.slug}`;
+  const articleUrl = `${siteUrl}${contentPath(article.slug)}`;
 
   return (
     <Container className="py-10">
+      <ArticleJsonLd article={article} url={articleUrl} siteUrl={siteUrl} />
       <nav className="flex flex-wrap items-center gap-1 text-xs text-foreground-muted" aria-label="パンくずリスト">
         <Link href="/" className="hover:text-accent-dark">
           ホーム

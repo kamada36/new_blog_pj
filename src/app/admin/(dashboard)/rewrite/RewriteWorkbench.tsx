@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { contentPath } from "@/lib/slug";
 import { useRouter } from "next/navigation";
 import { ModelSelect } from "@/components/admin/ai/ModelSelect";
 import { estimateRewriteCost, formatJpy } from "@/lib/ai/costs";
@@ -345,7 +346,7 @@ export function RewriteWorkbench({
                       {row.status === "published" && (
                         <>
                           {" ・ "}
-                          <Link href={`/articles/${row.slug}`} target="_blank" className="hover:underline">
+                          <Link href={contentPath(row.slug)} target="_blank" className="hover:underline">
                             公開ページ ↗
                           </Link>
                         </>

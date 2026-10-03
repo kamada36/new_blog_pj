@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { contentPath } from "@/lib/slug";
 import {
   applyRewrite,
   finalizeRewrite,
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     const linkedSlugs = collectLinkedSlugs(article.contentMarkdown);
     const internalLinks: InternalLinkRequest[] = targets
       .filter((t) => !linkedSlugs.has(t.slug))
-      .map((t) => ({ title: t.title, url: `/articles/${t.slug}`, reason: reasons.get(t.id) }));
+      .map((t) => ({ title: t.title, url: contentPath(t.slug), reason: reasons.get(t.id) }));
 
     const resident = await getResidentPersona();
     // AI生成記事は行間用のスペーサー(&nbsp;)を含む。AIには見せず、リライト後に付け直す(含まない記事には付けない)。

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { contentPath } from "@/lib/slug";
 import { formatDate } from "@/lib/format";
 import { IconMug, IconBarChart } from "@/components/icons/CafeIcons";
 import type { ArticleCardData } from "@/components/article/ArticleCard";
@@ -20,7 +21,7 @@ export function ArticleRowCard({
   viewStats?: ArticleViewStats | null;
 }) {
   return (
-    <Link href={`/articles/${article.slug}`} className="group flex items-center gap-3">
+    <Link href={contentPath(article.slug)} className="group flex items-center gap-3">
       <div className={`relative ${THUMB_SIZE[size]} shrink-0 overflow-hidden rounded-lg bg-surface-muted`}>
         {article.coverImageUrl ? (
           <Image

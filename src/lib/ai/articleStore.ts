@@ -1,7 +1,7 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slug";
+import { contentPath, isReservedSlug, slugify } from "@/lib/slug";
 import { DEFAULT_RESIDENT, type CategoryOption, type ResidentPersona } from "./guidelines";
 
 // AI生成・AIリライトの結果をSupabase(Postgres/Prisma)へ保存するデータ層。
@@ -49,10 +49,14 @@ export async function ensureUniqueSlug(base: string, excludeArticleId?: string):
   const root = sanitizeSlug(base) || timestampSlug();
   for (let n = 1; n < 100; n++) {
     const candidate = n === 1 ? root : `${root}-${n}`;
-    const clash = await prisma.article.findFirst({
-      where: { slug: candidate, ...(excludeArticleId ? { NOT: { id: excludeArticleId } } : {}) },
-      select: { id: true },
-    });
+    // 記事は /{slug}/ で表示するため、予約パス・固定ページとも重ならないスラッグにする
+    const clash =
+      isReservedSlug(candidate) ||
+      (await prisma.page.findUnique({ where: { slug: candidate }, select: { id: true } })) ||
+      (await prisma.article.findFirst({
+        where: { slug: candidate, ...(excludeArticleId ? { NOT: { id: excludeArticleId } } : {}) },
+        select: { id: true },
+      }));
     if (!clash) return candidate;
   }
   return `${root}-${Date.now()}`;
@@ -190,7 +194,7 @@ export async function upsertArticleDraft(
 
   // 公開済みの記事を追加指示で更新した場合に、公開ページへ反映する
   revalidatePath("/");
-  revalidatePath(`/articles/${saved.slug}`);
+  revalidatePath(contentPath(saved.slug));
   revalidatePath("/admin/articles");
   return saved;
 }
@@ -247,7 +251,7 @@ export async function saveRewriteBackupIfAbsent(article: {
 
 function revalidateArticlePaths(slug: string) {
   revalidatePath("/");
-  revalidatePath(`/articles/${slug}`);
+  revalidatePath(contentPath(slug));
   revalidatePath("/admin/articles");
   revalidatePath("/admin/rewrite");
 }

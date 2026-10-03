@@ -17,6 +17,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 import { createMediaUrlRewriter } from "./lib/media-url";
 import { stripHtmlToPlainText, decodeHtmlEntities } from "./lib/html-text";
+import { decodeSlug, encodeSlug } from "../src/lib/slug";
+import { mirrorWpMedia } from "./lib/mirror-media";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -27,13 +29,23 @@ function requireEnv(name: string): string {
 }
 
 const WP_URL = requireEnv("WP_URL").replace(/\/+$/, "");
-const WP_USER = requireEnv("WP_USER");
-const WP_APP_PASSWORD = requireEnv("WP_APP_PASSWORD");
+// 認証情報は任意。未設定なら「公開済みの記事だけ」を匿名で取得する(下書き・非公開は取得できない)。
+const WP_USER = process.env.WP_USER ?? "";
+const WP_APP_PASSWORD = process.env.WP_APP_PASSWORD ?? "";
+const HAS_AUTH = Boolean(WP_USER && WP_APP_PASSWORD);
+
+// 指定したスラッグの記事だけを取り込む(カンマ区切り。日本語は %xx でも日本語のままでも可)。
+// 既に取り込み済みの記事を上書きしないよう、スラッグ指定のときは常に「新規作成のみ」で動く。
+const ONLY_SLUGS = (process.env.WP_IMPORT_SLUGS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const CREATE_ONLY = ONLY_SLUGS.length > 0 || process.env.WP_IMPORT_CREATE_ONLY === "true";
 
 const NEW_MEDIA_BASE_URL = process.env.NEW_MEDIA_BASE_URL ?? "https://media.resilient-cer.com";
 const WP_OLD_MEDIA_DOMAIN = process.env.WP_OLD_MEDIA_DOMAIN ?? new URL(WP_URL).hostname;
 const WP_OLD_MEDIA_PATH_PREFIX = process.env.WP_OLD_MEDIA_PATH_PREFIX ?? "/wp-content/uploads";
-const NEW_MEDIA_PATH_PREFIX = process.env.NEW_MEDIA_PATH_PREFIX ?? "/uploads";
+const NEW_MEDIA_PATH_PREFIX = process.env.NEW_MEDIA_PATH_PREFIX ?? "";
 const PER_PAGE = Number(process.env.WP_IMPORT_PER_PAGE ?? 50);
 const DRY_RUN = process.env.WP_IMPORT_DRY_RUN === "true";
 const FALLBACK_CATEGORY_SLUG = "uncategorized";
@@ -67,20 +79,24 @@ type WpPost = {
 };
 
 async function fetchAllPosts(): Promise<WpPost[]> {
-  const authHeader = "Basic " + Buffer.from(`${WP_USER}:${WP_APP_PASSWORD}`).toString("base64");
+  const headers: Record<string, string> = HAS_AUTH
+    ? { Authorization: "Basic " + Buffer.from(`${WP_USER}:${WP_APP_PASSWORD}`).toString("base64") }
+    : {};
   const posts: WpPost[] = [];
   let page = 1;
 
   while (true) {
     const url = new URL("/wp-json/wp/v2/posts", WP_URL);
-    url.searchParams.set("status", "any");
+    if (HAS_AUTH) url.searchParams.set("status", "any");
+    // WPのスラッグは日本語を小文字の %xx で持っているため、その形で問い合わせる
+    if (ONLY_SLUGS.length > 0) url.searchParams.set("slug", ONLY_SLUGS.map(encodeSlug).join(","));
     url.searchParams.set("_embed", "1");
     url.searchParams.set("per_page", String(PER_PAGE));
     url.searchParams.set("page", String(page));
     url.searchParams.set("orderby", "id");
     url.searchParams.set("order", "asc");
 
-    const res = await fetch(url, { headers: { Authorization: authHeader } });
+    const res = await fetch(url, { headers });
 
     if (!res.ok) {
       // WPは最終ページを超えると400 rest_post_invalid_page_numberを返す。
@@ -157,9 +173,9 @@ async function resolveCategoryId(wpCategories: WpTerm[], fallbackCategoryId: str
 
   const primary = wpCategories[0];
   const category = await prisma.category.upsert({
-    where: { slug: primary.slug },
+    where: { slug: decodeSlug(primary.slug) },
     update: {},
-    create: { name: decodeHtmlEntities(primary.name), slug: primary.slug },
+    create: { name: decodeHtmlEntities(primary.name), slug: decodeSlug(primary.slug) },
   });
   return category.id;
 }
@@ -187,6 +203,23 @@ async function run() {
     try {
       const title = stripHtmlToPlainText(post.title.rendered);
       const excerpt = stripHtmlToPlainText(post.excerpt.rendered).slice(0, 400);
+      // WPのスラッグは日本語が %xx 形式。現行サイトのURL(日本語)と同じ形で保存する。
+      const slug = decodeSlug(post.slug);
+      const featuredSrc = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
+      // 新しい記事の画像が、R2に無ければ旧サイトからコピーする(DRY RUN・取り込み済み記事のスキップ時は行わない)
+      const alreadyImported = CREATE_ONLY && Boolean(await prisma.article.findUnique({ where: { wpId: post.id }, select: { id: true } }));
+      if (!DRY_RUN && !alreadyImported) {
+        const mirrored = await mirrorWpMedia({
+          oldDomain: WP_OLD_MEDIA_DOMAIN,
+          oldPathPrefix: WP_OLD_MEDIA_PATH_PREFIX,
+          newPathPrefix: NEW_MEDIA_PATH_PREFIX,
+          texts: [post.content.rendered, featuredSrc],
+        });
+        if (mirrored.copied + mirrored.existed + mirrored.failed.length > 0) {
+          console.log(`    画像: コピー ${mirrored.copied} / R2に既存 ${mirrored.existed} / 失敗 ${mirrored.failed.length}`);
+        }
+        for (const f of mirrored.failed) console.warn(`    画像のコピーに失敗: ${f}`);
+      }
       const contentHtml = rewriteMediaUrls(post.content.rendered);
       const contentMarkdown = nhm.translate(contentHtml).trim() || "(本文なし)";
 
@@ -205,7 +238,7 @@ async function run() {
 
       // slugが既存の別記事(WP由来でないもの含む)と衝突する場合は上書きせずスキップする。
       const slugConflict = await prisma.article.findFirst({
-        where: { slug: post.slug, wpId: { not: post.id } },
+        where: { slug, wpId: { not: post.id } },
         select: { id: true },
       });
       if (slugConflict) {
@@ -217,13 +250,13 @@ async function run() {
       const wpCategories = extractTerms(post, "category");
       const categoryId = await resolveCategoryId(wpCategories, fallbackCategoryId!);
       const tagConnectOrCreate = wpTags.map((t) => ({
-        where: { slug: t.slug },
-        create: { name: decodeHtmlEntities(t.name), slug: t.slug },
+        where: { slug: decodeSlug(t.slug) },
+        create: { name: decodeHtmlEntities(t.name), slug: decodeSlug(t.slug) },
       }));
 
       const baseData = {
         title,
-        slug: post.slug,
+        slug,
         excerpt,
         contentMarkdown,
         coverImageUrl,
@@ -239,7 +272,10 @@ async function run() {
 
       const existing = await prisma.article.findUnique({ where: { wpId: post.id }, select: { id: true } });
 
-      if (existing) {
+      if (existing && CREATE_ONLY) {
+        console.log(`${label} -> 取り込み済みのためスキップ(新規作成のみのモード)`);
+        summary.skipped += 1;
+      } else if (existing) {
         await prisma.article.update({
           where: { id: existing.id },
           data: { ...baseData, tags: { set: [], connectOrCreate: tagConnectOrCreate } },

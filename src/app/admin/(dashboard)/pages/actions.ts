@@ -4,7 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slug";
+import { isReservedSlug, slugify } from "@/lib/slug";
 
 const pageSchema = z.object({
   id: z.string().optional(),
@@ -45,6 +45,14 @@ export async function savePage(_prevState: PageFormState, formData: FormData): P
   });
   if (duplicate) {
     return { status: "error", message: "このスラッグは既に使用されています。" };
+  }
+  // 固定ページも /{slug}/ で表示するため、サイトのパスや記事と同名にはできない(「プロフィール」ページの profile だけは例外)
+  if (data.slug !== "profile" && isReservedSlug(data.slug)) {
+    return { status: "error", message: "このスラッグはサイトのページで使われているため、使用できません。" };
+  }
+  const articleClash = await prisma.article.findUnique({ where: { slug: data.slug }, select: { id: true } });
+  if (articleClash) {
+    return { status: "error", message: "このスラッグは記事で使われているため、使用できません。" };
   }
 
   const payload = {

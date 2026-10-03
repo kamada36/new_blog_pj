@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { contentPath } from "@/lib/slug";
 import { formatDate } from "@/lib/format";
 import { IconMug, IconBarChart } from "@/components/icons/CafeIcons";
 import type { ArticleViewStats } from "@/lib/queries";
@@ -23,7 +24,7 @@ export function ArticleCard({
 }) {
   return (
     <Link
-      href={`/articles/${article.slug}`}
+      href={contentPath(article.slug)}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-shadow hover:shadow-lg"
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface-muted">

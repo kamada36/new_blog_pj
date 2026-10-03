@@ -36,6 +36,8 @@ export async function generateMetadata(): Promise<Metadata> {
     // app/favicon.ico を置くと設定値と並んで2本出力されブラウザの選択が不定になるため、
     // 既定のファビコンは public に置き、リンクを常に1本だけにする
     icons: { icon: faviconUrl ?? "/favicon-default.ico" },
+    // 現行WordPressと同じURL(/feed/)のRSS。フィードリーダーが自動で見つけられるようにする
+    alternates: { types: { "application/rss+xml": "/feed/" } },
   };
 }
 
