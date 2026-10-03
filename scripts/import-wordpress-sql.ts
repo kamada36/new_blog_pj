@@ -115,8 +115,8 @@ async function getFallbackCategoryId(): Promise<string> {
   return category.id;
 }
 
-async function resolveCategoryId(name: string, slug: string, fallbackCategoryId: string): Promise<string> {
-  if (!slug) return fallbackCategoryId;
+async function resolveCategoryId(name: string, slug: string, getFallbackCategoryId: () => Promise<string>): Promise<string> {
+  if (!slug) return getFallbackCategoryId();
   const category = await prisma.category.upsert({
     where: { slug },
     update: {},
@@ -197,7 +197,9 @@ async function run() {
   console.log(`取得完了: 全${allPosts.length}行 / 移行対象記事 ${targetPosts.length}件`);
 
   const adminUserId = DRY_RUN ? null : await getAdminUserId();
-  const fallbackCategoryId = DRY_RUN ? null : await getFallbackCategoryId();
+  // 「未分類」カテゴリーは、カテゴリーが無い記事が実際に出たときだけ作る(使わないのに作らない)
+  let fallbackPromise: Promise<string> | null = null;
+  const fallbackCategoryId = () => (fallbackPromise ??= getFallbackCategoryId());
 
   const summary = { created: 0, updated: 0, skipped: 0, failed: 0 };
   const nhm = new NodeHtmlMarkdown({ useLinkReferenceDefinitions: false });
@@ -250,8 +252,8 @@ async function run() {
       const wpCategories = getTerms(wpId, "category");
       const categoryId =
         wpCategories.length > 0
-          ? await resolveCategoryId(str(wpCategories[0], "name"), str(wpCategories[0], "slug"), fallbackCategoryId!)
-          : fallbackCategoryId!;
+          ? await resolveCategoryId(str(wpCategories[0], "name"), str(wpCategories[0], "slug"), fallbackCategoryId)
+          : await fallbackCategoryId();
 
       const tagConnectOrCreate = wpTags.map((t) => ({
         where: { slug: str(t, "slug") },
