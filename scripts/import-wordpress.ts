@@ -168,8 +168,8 @@ async function getFallbackCategoryId(): Promise<string> {
  * - WP側にカテゴリーが無ければ「未分類」にフォールバックする
  * このアプリのArticleは単一カテゴリー設計のため、2つ目以降のWPカテゴリーは取り込まない。
  */
-async function resolveCategoryId(wpCategories: WpTerm[], fallbackCategoryId: string): Promise<string> {
-  if (wpCategories.length === 0) return fallbackCategoryId;
+async function resolveCategoryId(wpCategories: WpTerm[], getFallbackCategoryId: () => Promise<string>): Promise<string> {
+  if (wpCategories.length === 0) return getFallbackCategoryId();
 
   const primary = wpCategories[0];
   const category = await prisma.category.upsert({
@@ -193,7 +193,9 @@ async function run() {
   console.log(`取得完了: ${posts.length}件`);
 
   const adminUserId = DRY_RUN ? null : await getAdminUserId();
-  const fallbackCategoryId = DRY_RUN ? null : await getFallbackCategoryId();
+  // 「未分類」カテゴリーは、WP側にカテゴリーが無い記事が実際に出たときだけ作る(使わないのに作らない)
+  let fallbackPromise: Promise<string> | null = null;
+  const fallbackCategoryId = () => (fallbackPromise ??= getFallbackCategoryId());
 
   const summary = { created: 0, updated: 0, skipped: 0, failed: 0 };
   const nhm = new NodeHtmlMarkdown({ useLinkReferenceDefinitions: false });
@@ -248,7 +250,7 @@ async function run() {
       }
 
       const wpCategories = extractTerms(post, "category");
-      const categoryId = await resolveCategoryId(wpCategories, fallbackCategoryId!);
+      const categoryId = await resolveCategoryId(wpCategories, fallbackCategoryId);
       const tagConnectOrCreate = wpTags.map((t) => ({
         where: { slug: decodeSlug(t.slug) },
         create: { name: decodeHtmlEntities(t.name), slug: decodeSlug(t.slug) },
