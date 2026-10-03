@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { resolveImageField } from "@/lib/uploadField";
-import { slugify } from "@/lib/slug";
+import { contentPath, isReservedSlug, slugify } from "@/lib/slug";
+
 
 const articleSchema = z.object({
   id: z.string().optional(),
@@ -60,6 +61,15 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
 
   const data = parsed.data;
 
+  // 記事はサイト直下の /{slug}/ で表示するため、サイトのパス(admin・category など)や固定ページと同名にはできない
+  if (isReservedSlug(data.slug)) {
+    return { status: "error", message: "このスラッグはサイトのページで使われているため、記事には使用できません。" };
+  }
+  const pageClash = await prisma.page.findUnique({ where: { slug: data.slug }, select: { id: true } });
+  if (pageClash) {
+    return { status: "error", message: "このスラッグは固定ページで使われているため、記事には使用できません。" };
+  }
+
   const duplicate = await prisma.article.findFirst({
     where: { slug: data.slug, NOT: data.id ? { id: data.id } : undefined },
   });
@@ -100,7 +110,7 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
   }
 
   revalidatePath("/");
-  revalidatePath(`/articles/${data.slug}`);
+  revalidatePath(contentPath(data.slug));
   redirect("/admin/articles");
 }
 

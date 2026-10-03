@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { contentPath } from "@/lib/slug";
 import {
   INTERNAL_LINK_FORMATS,
   INTERNAL_LINK_FORMAT_LABELS,
@@ -87,7 +88,7 @@ export function LinkSuggestionsPanel({
               />
               <div className="min-w-0 flex-1 text-xs">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <Link href={`/articles/${s.slug}`} target="_blank" className="font-semibold hover:text-accent-dark hover:underline">
+                  <Link href={contentPath(s.slug)} target="_blank" className="font-semibold hover:text-accent-dark hover:underline">
                     {s.title} ↗
                   </Link>
                   {s.linked && (

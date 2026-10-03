@@ -31,7 +31,7 @@ export function OutlinePreview({
       {parsed.metaDescription && <p className="mt-2 text-xs text-foreground-muted">🔍 {parsed.metaDescription}</p>}
       <div className="mt-2 flex flex-wrap gap-1.5">
         {parsed.slug && (
-          <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">/articles/{parsed.slug}</span>
+          <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">/{parsed.slug}/</span>
         )}
         {parsed.categorySlug && (
           <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">

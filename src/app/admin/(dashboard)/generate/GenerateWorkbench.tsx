@@ -785,7 +785,7 @@ export function GenerateWorkbench({
               <div>
                 <label className="text-xs font-semibold text-foreground-muted">スラッグ(URL)</label>
                 <p className="mt-1 truncate rounded-lg border border-border bg-surface-muted px-3 py-2 text-sm">
-                  /articles/{article?.slug ?? "…"}
+                  /{article?.slug ?? "…"}/
                 </p>
               </div>
               <div className="sm:col-span-2">

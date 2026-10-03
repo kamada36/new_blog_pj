@@ -9,7 +9,7 @@ import type { InternalLinkFormat } from "./linkTypes";
 export const SUMMARY_DIVIDER = /\n?===\s*SUMMARY\s*===\n?/i;
 
 export interface InternalLinkRequest {
-  /** サイト内パス(/articles/xxx) */
+  /** サイト内パス(/xxx/) */
   url: string;
   title: string;
   /** 紹介できる文脈(AIが選別したときの理由)。挿入位置を決める手がかりになる */
