@@ -37,6 +37,11 @@ function nonProductionHostPattern(): string {
 }
 
 const nextConfig: NextConfig = {
+  // Turbopackのビルドキャッシュ(.next/cache/turbopack)にはビルド時に読んだ環境変数の値(R2・AUTH_SECRET・APIキー)が
+  // 含まれ、NetlifyのSecrets scanningに検出されてビルドが失敗する。Netlify上(NETLIFY=true)だけキャッシュを作らない。
+  experimental: {
+    turbopackFileSystemCacheForBuild: !process.env.NETLIFY,
+  },
   images: {
     remotePatterns,
   },
