@@ -20,7 +20,9 @@ async function hasValidSession(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  // trailingSlash: true のため、環境(Netlify など)によってパスが末尾「/」付きで渡る。
+  // 揃えないとログインページを判定できず、未ログイン時に /admin/login へ転送し続けるループになる。
+  const pathname = request.nextUrl.pathname.replace(/\/+$/, "") || "/";
   const isLoginPage = pathname === "/admin/login";
   const authenticated = await hasValidSession(request);
 
