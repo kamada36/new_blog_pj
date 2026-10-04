@@ -8,12 +8,14 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileMenuDrawer } from "@/components/layout/MobileMenuDrawer";
 import { MobileSearchOverlay } from "@/components/layout/MobileSearchOverlay";
 import { getSiteSetting } from "@/lib/queries";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const siteSetting = await getSiteSetting();
 
   return (
     <MobileUIProvider>
+      <GoogleAnalytics />
       <Header />
       <main className="flex-1 pb-16 md:pb-0">{children}</main>
       {siteSetting.sponsorFooterEmbed && (
