@@ -42,10 +42,13 @@ export async function ArticleView({ article }: { article: PublishedArticle }) {
   }
 
   const toc = extractHeadings(article.contentMarkdown);
-  const related = await getRelatedArticles(article, 4);
+  // 互いに依存しない問い合わせは同時に走らせる(順番に待つと、DBまでの往復の遅延が積み重なる)
+  const [related, { prev, next }, shortcodes] = await Promise.all([
+    getRelatedArticles(article, 4),
+    getAdjacentArticles(article),
+    getShortcodes(),
+  ]);
   const relatedViewStatsMap = await getAdminViewStatsForArticles(related);
-  const { prev, next } = await getAdjacentArticles(article);
-  const shortcodes = await getShortcodes();
   const articleUrl = `${siteUrl}${contentPath(article.slug)}`;
 
   return (
