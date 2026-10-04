@@ -1,0 +1,6 @@
+# Netlify のビルド設定。Next.js は Netlify が自動で検出する(専用のプラグイン設定は不要)。
+# ビルドコマンド・公開ディレクトリは Netlify の既定(next build)のままにする。
+
+[build.environment]
+  # Next.js 16 は Node.js 20.9 以上が必要。ビルドで使うバージョンを明示して固定する。
+  NODE_VERSION = "22"
