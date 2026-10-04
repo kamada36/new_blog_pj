@@ -8,8 +8,8 @@ import { ArticleCard } from "@/components/article/ArticleCard";
 import { ArticleRowCard } from "@/components/article/ArticleRowCard";
 import { IconMug } from "@/components/icons/CafeIcons";
 import {
-  getArticlesByCategory,
   getCategories,
+  getLatestArticlesByCategory,
   getPopularArticles,
   getPrimaryAuthor,
   getRecentArticles,
@@ -19,20 +19,19 @@ import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
 
 export default async function HomePage() {
-  const [siteSetting, categories, recentArticles, popularArticles, author] = await Promise.all([
+  const [siteSetting, categories, recentArticles, popularArticles, author, latestByCategory] = await Promise.all([
     getSiteSetting(),
     getCategories(),
     getRecentArticles(4),
     getPopularArticles(5),
     getPrimaryAuthor(),
+    getLatestArticlesByCategory(4),
   ]);
 
-  const categorySections = await Promise.all(
-    categories.map(async (category) => ({
-      category,
-      articles: await getArticlesByCategory(category.id, 4),
-    }))
-  );
+  const categorySections = categories.map((category) => ({
+    category,
+    articles: latestByCategory.get(category.id) ?? [],
+  }));
 
   const viewStatsMap = await getAdminViewStatsForArticles([
     ...recentArticles,

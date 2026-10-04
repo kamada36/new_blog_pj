@@ -3,16 +3,20 @@ import { Zen_Kaku_Gothic_New, Noto_Sans_JP, Dancing_Script } from "next/font/goo
 import { getSiteSetting } from "@/lib/queries";
 import "./globals.css";
 
+// 日本語フォントは字形ごとに多数のファイルへ分割されている。preload を有効のままにすると、使わない分まで
+// 約50本をすべて先読みしてしまうため無効にする(必要な字形だけ、CSSの unicode-range に従って読み込まれる)。
 const bodyFont = Noto_Sans_JP({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  preload: false,
 });
 
 const displayFont = Zen_Kaku_Gothic_New({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "700", "900"],
+  preload: false,
 });
 
 // トップページのサイト名(Resilient-cer cafe)に使う筆記体

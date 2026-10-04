@@ -81,13 +81,21 @@ export async function getRecentArticles(limit = 4) {
   });
 }
 
-export async function getArticlesByCategory(categoryId: string, limit = 4) {
-  return prisma.article.findMany({
-    where: { ...publishedWhere(), categoryId },
-    orderBy: { publishedAt: "desc" },
-    take: limit,
-    select: cardSelect,
+// トップページのカテゴリー別セクション用。カテゴリーごとに問い合わせると、DBが遠い環境(Netlifyの米国リージョン
+// とSupabaseのシンガポール)では往復の待ちが積み重なるため、各カテゴリーの最新記事を1回の問い合わせ(JOIN)で取る。
+export async function getLatestArticlesByCategory(limit = 4) {
+  const categories = await prisma.category.findMany({
+    select: {
+      id: true,
+      articles: {
+        where: publishedWhere(),
+        orderBy: { publishedAt: "desc" },
+        take: limit,
+        select: cardSelect,
+      },
+    },
   });
+  return new Map(categories.map((category) => [category.id, category.articles]));
 }
 
 export const getPopularArticles = cache(async function getPopularArticles(limit = 5) {
@@ -147,7 +155,8 @@ export async function getArticlesPage(params: {
   };
 }
 
-export async function getArticleBySlug(slug: string) {
+// generateMetadata とページ本体の両方から呼ばれるため、リクエスト単位でメモ化して問い合わせを1回にする。
+export const getArticleBySlug = cache(async function getArticleBySlug(slug: string) {
   return prisma.article.findUnique({
     where: { slug },
     include: {
@@ -156,7 +165,7 @@ export async function getArticleBySlug(slug: string) {
       author: true,
     },
   });
-}
+});
 
 // 同一訪問者(IP+UAのハッシュ)による短時間の再読み込み・再訪問は
 // カウントしない。WordPressの主要な閲覧数計測プラグインも同様に
@@ -267,8 +276,9 @@ export async function getAdjacentArticles(article: { id: string; publishedAt: Da
   return { prev, next };
 }
 
-export async function getPageBySlug(slug: string) {
+// getArticleBySlug と同じ理由でリクエスト単位でメモ化する(generateMetadata とページ本体)。
+export const getPageBySlug = cache(async function getPageBySlug(slug: string) {
   return prisma.page.findUnique({ where: { slug } });
-}
+});
 
 export { PAGE_SIZE };
