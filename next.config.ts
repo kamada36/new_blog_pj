@@ -42,6 +42,11 @@ const nextConfig: NextConfig = {
   experimental: {
     turbopackFileSystemCacheForBuild: !process.env.NETLIFY,
   },
+  // AIジョブの実行場所。Netlify上ではバックグラウンド関数(最大15分)、それ以外(ローカル)ではサーバーの中で動かす。
+  // ビルド時に決まる値として埋め込む(NETLIFY はNetlifyのビルド環境で設定される)。
+  env: {
+    AI_JOB_MODE: process.env.NETLIFY ? "netlify" : "inline",
+  },
   images: {
     remotePatterns,
   },

@@ -228,3 +228,63 @@ model ContactMessage {
   createdAt DateTime  @default(now())
   readAt    DateTime?
 }
+
+// AI生成・リライトのバックグラウンド実行。Netlifyの通常の関数は60秒で打ち切られるため、長い処理は
+
+// バックグラウンド関数(最大15分)で実行し、進捗(イベント)をこの2つのテーブルに書いて、画面が定期的に読み取る。
+
+model AiJob {
+
+  id        String       @id @default(cuid())
+
+  /// outline | article | rewrite
+
+  kind      String
+
+  /// queued | running | done | error | canceled
+
+  status    String       @default("queued")
+
+  /// 検証済みのリクエスト内容(kindごとのスキーマに沿ったJSON)
+
+  input     Json
+
+  userId    String
+
+  createdAt DateTime     @default(now())
+
+  /// 実行中は定期的に更新する(心拍)。更新が止まったジョブは、画面側が「中断された」と判定する。
+
+  updatedAt DateTime     @default(now()) @updatedAt
+
+  events    AiJobEvent[]
+
+
+
+  @@index([createdAt])
+
+}
+
+
+
+model AiJobEvent {
+
+  /// 連番。画面は「このID以降」のイベントだけを取得する。
+
+  id        Int      @id @default(autoincrement())
+
+  jobId     String
+
+  job       AiJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  /// lib/ai/stream.ts のイベント(delta / saved / done / error など)
+
+  payload   Json
+
+  createdAt DateTime @default(now())
+
+
+
+  @@index([jobId, id])
+
+}
