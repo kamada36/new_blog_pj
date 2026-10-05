@@ -64,14 +64,18 @@ export async function postEventStream<E extends { type: string }>(
   onEvent: (event: E) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const res = await fetch(url, {
+  // trailingSlash: true のため、末尾「/」なしで呼ぶと 308 で転送される。最初から「/」付きで呼び、無駄な往復を避ける。
+  const target = url.endsWith("/") ? url : `${url}/`;
+  const res = await fetch(target, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     signal,
   });
 
-  if (res.redirected || res.status === 401) {
+  // 転送されただけ(末尾「/」の付け直しなど)ではログイン切れとは限らないため、転送先がログインページのときだけ判定する。
+  const redirectedToLogin = res.redirected && new URL(res.url).pathname.startsWith("/admin/login");
+  if (redirectedToLogin || res.status === 401) {
     throw new Error("セッションが切れました。ログインし直してください。");
   }
 
