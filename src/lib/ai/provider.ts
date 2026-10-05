@@ -45,8 +45,17 @@ export function providerOptionsFor(modelId: string) {
 
 // ─── エラー ───────────────────────────────────────────────────────────────
 
+/**
+ * 402は前払いクレジットの残高切れ。ステータス文字列は429のクォータ超過と同じ RESOURCE_EXHAUSTED だが、
+ * 待っても直らず、残高を追加するまで解消しないため、再試行の対象から外して専用のメッセージを出す。
+ */
+function isCreditDepleted(error: APICallError): boolean {
+  return error.statusCode === 402 || /prepayment credits are depleted/i.test(error.message);
+}
+
 /** 429/RESOURCE_EXHAUSTEDはクォータ超過。サーバーが指定するretryDelayまで待たないと解消しないことが多い。 */
 function isQuotaExhausted(error: APICallError): boolean {
+  if (isCreditDepleted(error)) return false;
   if (error.statusCode === 429) return true;
   return (error.data as { error?: { status?: string } } | undefined)?.error?.status === "RESOURCE_EXHAUSTED";
 }
@@ -79,6 +88,9 @@ export function describeAiError(error: unknown, modelId?: string): string {
   if (isAbortError(error)) return "生成を中断しました。";
 
   if (APICallError.isInstance(error)) {
+    if (isCreditDepleted(error)) {
+      return "AI APIの前払いクレジットが不足しています(残高切れ)。Google AI Studio(https://aistudio.google.com/)で残高を追加してから、もう一度お試しください。";
+    }
     if (isQuotaExhausted(error)) {
       return "AI APIのレート制限(利用上限)に達しました。しばらく待ってから再試行するか、別のモデルを選んでください。";
     }
