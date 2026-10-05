@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser, destroySession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { IconMug } from "@/components/icons/CafeIcons";
 
 const NAV_ITEMS = [
@@ -27,6 +28,9 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
     redirect("/admin/session-expired");
   }
 
+  // 未読のお問い合わせがあるとき、メニューの「お問い合わせ」に件数のバッジを出す
+  const unreadMessageCount = await prisma.contactMessage.count({ where: { readAt: null } });
+
   async function logoutAction() {
     "use server";
     await destroySession();
@@ -45,9 +49,17 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
             <Link
               key={item.href}
               href={item.href}
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-muted hover:text-accent-dark"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-muted hover:text-accent-dark"
             >
               {item.label}
+              {item.href === "/admin/messages" && unreadMessageCount > 0 && (
+                <span
+                  className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white"
+                  aria-label={`未読のお問い合わせ ${unreadMessageCount} 件`}
+                >
+                  {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
