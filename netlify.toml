@@ -1,5 +1,11 @@
 # Netlify のビルド設定。Next.js は Netlify が自動で検出する(専用のプラグイン設定は不要)。
-# ビルドコマンド・公開ディレクトリは Netlify の既定(next build)のままにする。
+# 公開ディレクトリは Netlify の既定(.next)のままにする。
+
+[build]
+  # Next.js のビルドの後に、AIジョブ(長時間のAI処理)を動かすバックグラウンド関数を自前でまとめて
+  # netlify/functions/ へ出力する(scripts/build-netlify-functions.mjs)。通常の関数は60秒で打ち切られるため、
+  # 長いAI処理はバックグラウンド関数(最大15分)で動かす。
+  command = "npm run build && npm run build:functions"
 
 [build.environment]
   # Next.js 16 は Node.js 20.9 以上が必要。ビルドで使うバージョンを明示して固定する。
