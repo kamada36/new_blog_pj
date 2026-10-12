@@ -16,7 +16,7 @@ import {
   getProviderForModel,
 } from "@/lib/ai/models";
 import {
-  postEventStream,
+  streamAiJob,
   type ArticleStreamEvent,
   type OutlineStreamEvent,
   type SavedArticleInfo,
@@ -304,8 +304,8 @@ export function GenerateWorkbench({
 
     let acc = "";
     try {
-      await postEventStream<OutlineStreamEvent>(
-        "/admin/api/generate/outline",
+      await streamAiJob<OutlineStreamEvent>(
+        "outline",
         { source, modelId: outlineModel, wordCount, textLinks, bannerLinks },
         (event) => {
           if (event.type === "delta") {
@@ -341,8 +341,8 @@ export function GenerateWorkbench({
 
     let live = "";
     try {
-      await postEventStream<ArticleStreamEvent>(
-        "/admin/api/generate/article",
+      await streamAiJob<ArticleStreamEvent>(
+        "article",
         {
           source,
           wordCount,

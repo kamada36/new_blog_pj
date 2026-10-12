@@ -36,11 +36,28 @@ function nonProductionHostPattern(): string {
   }
 }
 
+// 管理画面のログイン入口(環境変数 ADMIN_LOGIN_PATH)。src/lib/adminPaths.ts と同じ判定(ビルド時用の複製)。
+// 設定されていれば、そのURLを /admin/login の画面に振り向ける。標準の /admin/login は、proxy.ts が404にする。
+function adminLoginPathFromEnv(): string | null {
+  const raw = process.env.ADMIN_LOGIN_PATH?.trim();
+  if (!raw) return null;
+  const normalized = `/${raw.replace(/^\/+|\/+$/g, "")}`;
+  if (/^\/[A-Za-z0-9][A-Za-z0-9_-]{7,}$/.test(normalized)) return normalized;
+  console.warn("[next.config] ADMIN_LOGIN_PATH は、英数字・ハイフン・アンダースコアの8文字以上、1階層で指定してください。無視します。");
+  return null;
+}
+const adminLoginPath = adminLoginPathFromEnv();
+
 const nextConfig: NextConfig = {
   // Turbopackのビルドキャッシュ(.next/cache/turbopack)にはビルド時に読んだ環境変数の値(R2・AUTH_SECRET・APIキー)が
   // 含まれ、NetlifyのSecrets scanningに検出されてビルドが失敗する。Netlify上(NETLIFY=true)だけキャッシュを作らない。
   experimental: {
     turbopackFileSystemCacheForBuild: !process.env.NETLIFY,
+  },
+  // AIジョブの実行場所。Netlify上ではバックグラウンド関数(最大15分)、それ以外(ローカル)ではサーバーの中で動かす。
+  // ビルド時に決まる値として埋め込む(NETLIFY はNetlifyのビルド環境で設定される)。
+  env: {
+    AI_JOB_MODE: process.env.NETLIFY ? "netlify" : "inline",
   },
   images: {
     remotePatterns,
@@ -50,12 +67,18 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   async headers() {
     return [
+      // ログイン入口は、検索エンジンに載せない
+      ...(adminLoginPath ? [{ source: adminLoginPath, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }] : []),
       {
         source: "/:path*",
         has: [{ type: "host", value: nonProductionHostPattern() }],
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];
+  },
+  // ログイン入口(秘密のURL)を、既存のログイン画面へ振り向ける。ファイル(ルート)より先に評価させる(beforeFiles)。
+  async rewrites() {
+    return adminLoginPath ? { beforeFiles: [{ source: adminLoginPath, destination: "/admin/login" }] } : [];
   },
   async redirects() {
     return [

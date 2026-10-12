@@ -55,3 +55,5 @@ next-env.d.ts
 
 # 移植作業用の一時参照フォルダ（Git追跡せずローカルでのみ参照）
 /reference-tools/
+# Netlifyのバックグラウンド関数のビルド出力(scripts/build-netlify-functions.mjs)
+/netlify/functions/

@@ -8,7 +8,7 @@ import { ModelSelect } from "@/components/admin/ai/ModelSelect";
 import { estimateRewriteCost, formatJpy } from "@/lib/ai/costs";
 import { DEFAULT_REWRITE_MODEL, getModel, getProviderForModel } from "@/lib/ai/models";
 import { isInternalLinkFormat, type InternalLinkFormat, type LinkIndexStatus, type LinkSuggestionView } from "@/lib/ai/linkTypes";
-import { postEventStream, type RewriteStreamEvent } from "@/lib/ai/stream";
+import { streamAiJob, type RewriteStreamEvent } from "@/lib/ai/stream";
 import {
   finalizeRewriteAction,
   findLinkSuggestionsAction,
@@ -155,8 +155,8 @@ export function RewriteWorkbench({
     let live = "";
 
     try {
-      await postEventStream<RewriteStreamEvent>(
-        "/admin/api/rewrite",
+      await streamAiJob<RewriteStreamEvent>(
+        "rewrite",
         {
           articleId: row.id,
           modelId,

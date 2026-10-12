@@ -2,7 +2,7 @@ import Image from "next/image";
 import { getSessionUser } from "@/lib/auth";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { ImagePickerField } from "@/components/admin/ImagePickerField";
-import { changePassword, updateProfile } from "./actions";
+import { changeEmail, changePassword, updateProfile } from "./actions";
 
 const AVATAR_PREVIEW_CLASS = "h-16 w-16 rounded-full object-cover";
 
@@ -92,6 +92,42 @@ export default async function AdminProfilePage({ searchParams }: PageProps<"/adm
           className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-contrast hover:bg-accent-dark"
         >
           保存する
+        </button>
+      </form>
+
+      <form action={changeEmail} className="mt-6 flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-display text-sm font-bold">ログイン用メールアドレスの変更</h2>
+        <p className="text-xs text-foreground-muted">
+          現在のメールアドレス: <span className="font-semibold text-foreground">{user.email}</span>
+          (変更後は、次回のログインから新しいメールアドレスを使います。本人確認のため、現在のパスワードが必要です。)
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-sm font-semibold">新しいメールアドレス</label>
+            <input
+              type="email"
+              name="newEmail"
+              required
+              autoComplete="off"
+              className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-semibold">現在のパスワード</label>
+            <input
+              type="password"
+              name="currentPassword"
+              required
+              autoComplete="current-password"
+              className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+        </div>
+        <button
+          type="submit"
+          className="self-start rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background hover:opacity-90"
+        >
+          メールアドレスを変更する
         </button>
       </form>
 

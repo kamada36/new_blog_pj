@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { getLoginPath } from "@/lib/adminPaths";
 import { resolveImageField } from "@/lib/uploadField";
 
 const profileSchema = z.object({
@@ -23,7 +24,7 @@ function redirectWithMessage(status: "success" | "error", message: string) {
 
 export async function updateProfile(formData: FormData) {
   const user = await getSessionUser();
-  if (!user) redirect("/admin/login");
+  if (!user) redirect(getLoginPath());
 
   const parsed = profileSchema.safeParse({
     name: formData.get("name"),
@@ -63,7 +64,7 @@ const passwordSchema = z
 
 export async function changePassword(formData: FormData) {
   const user = await getSessionUser();
-  if (!user) redirect("/admin/login");
+  if (!user) redirect(getLoginPath());
 
   const parsed = passwordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
@@ -86,4 +87,52 @@ export async function changePassword(formData: FormData) {
   await prisma.user.update({ where: { id: user!.id }, data: { passwordHash } });
 
   redirectWithMessage("success", "パスワードを変更しました。");
+}
+
+const emailSchema = z.object({
+  currentPassword: z.string().min(1),
+  // ログイン時の照合は大文字小文字を区別しないため、保存は小文字にそろえる
+  newEmail: z.string().trim().toLowerCase().email("正しいメールアドレスを入力してください").max(254),
+});
+
+/** ログイン用のメールアドレスの変更。本人確認のため、現在のパスワードを必須にする。 */
+export async function changeEmail(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) redirect(getLoginPath());
+
+  const parsed = emailSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newEmail: formData.get("newEmail"),
+  });
+
+  if (!parsed.success) {
+    redirectWithMessage("error", parsed.error.issues[0]?.message ?? "入力内容をご確認ください。");
+    return;
+  }
+
+  const valid = await bcrypt.compare(parsed.data.currentPassword, user!.passwordHash);
+  if (!valid) {
+    redirectWithMessage("error", "現在のパスワードが正しくありません。");
+    return;
+  }
+
+  const newEmail = parsed.data.newEmail;
+  if (newEmail === user!.email.toLowerCase()) {
+    redirectWithMessage("error", "現在と同じメールアドレスです。");
+    return;
+  }
+
+  try {
+    await prisma.user.update({ where: { id: user!.id }, data: { email: newEmail } });
+  } catch (error) {
+    // email は一意(unique)。すでに他のアカウントで使われている場合
+    if ((error as { code?: string }).code === "P2002") {
+      redirectWithMessage("error", "このメールアドレスは、すでに使われています。");
+      return;
+    }
+    throw error;
+  }
+
+  revalidatePath("/admin/profile");
+  redirectWithMessage("success", `ログイン用のメールアドレスを変更しました。次回のログインから「${newEmail}」を使ってください。`);
 }

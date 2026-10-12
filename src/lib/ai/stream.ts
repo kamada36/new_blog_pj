@@ -1,7 +1,9 @@
-// Route Handlerとクライアントの間で使うストリーミング形式。
-// 1行1イベントのJSON(NDJSON)で送る。元ツールは本文の末尾に目印文字列を連結する方式だったが、
-// 本文・SEO情報・画像・保存結果を型付きのイベントとして分けた方が壊れにくいため置き換えた。
+// AIジョブ(バックグラウンド実行)と画面の間で使うイベントの形式。
+// 元ツールは本文の末尾に目印文字列を連結する方式だったが、本文・SEO情報・画像・保存結果を
+// 型付きのイベントとして分けた方が壊れにくいため置き換えた。
 // サーバー・クライアントの両方から使うため、Node固有APIには依存しない。
+
+import type { AiJobKind } from "./jobKinds";
 
 export type OutlineStreamEvent =
   | { type: "delta"; text: string }
@@ -46,85 +48,110 @@ export type RewriteStreamEvent =
   | { type: "done" }
   | { type: "error"; message: string };
 
-const encoder = new TextEncoder();
+const POLL_INTERVAL_MS = 1000;
+// 通信の失敗(圏外・一時的なサーバーエラーなど)が、この回数続いたら諦める。バックグラウンドの処理は
+// 画面とは無関係に続くため、1〜2回の失敗では中断せず、読み取りを再試行する。
+const MAX_CONSECUTIVE_POLL_FAILURES = 8;
 
-/** サーバー側: イベントを1行のJSONとしてエンコードする。 */
-export function encodeEvent(event: object): Uint8Array {
-  return encoder.encode(`${JSON.stringify(event)}\n`);
+const SESSION_EXPIRED_MESSAGE = "セッションが切れました。ログインし直してください。";
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException("Aborted", "AbortError"));
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/** 認証切れ(proxyによるログインページへのリダイレクト、または401)かどうか。 */
+function isSessionExpired(res: Response): boolean {
+  if (res.status === 401) return true;
+  return res.redirected && new URL(res.url).pathname.startsWith("/admin/login");
+}
+
+async function readErrorMessage(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "");
+  let message = text.slice(0, 200);
+  try {
+    const data = JSON.parse(text) as { error?: string };
+    if (data.error) message = data.error;
+  } catch {
+    // JSONではない場合は生テキストをそのまま使う
+  }
+  return message || `リクエストに失敗しました(${res.status})。`;
 }
 
 /**
- * クライアント側: POSTしてNDJSONを読み、イベントごとにコールバックを呼ぶ。
- * 認証切れ(proxyによるログインページへのリダイレクト)や、プラットフォームのタイムアウトで
- * JSON以外が返った場合も、握りつぶさずに分かるメッセージのErrorとして投げる。
+ * クライアント側: AI処理(ジョブ)を開始し、進捗のイベントを1秒ごとに読み取って、イベントごとにコールバックを呼ぶ。
+ * Netlifyの関数は60秒で打ち切られるため、長い処理はバックグラウンド関数で実行し、画面は結果を読み取るだけにしている。
+ * 'done' か 'error' のイベントを受け取ると終わる。signal が中断されたら、ジョブの取り消しを依頼して AbortError を投げる。
  */
-export async function postEventStream<E extends { type: string }>(
-  url: string,
-  body: unknown,
+export async function streamAiJob<E extends { type: string }>(
+  kind: AiJobKind,
+  input: unknown,
   onEvent: (event: E) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  // trailingSlash: true のため、末尾「/」なしで呼ぶと 308 で転送される。最初から「/」付きで呼び、無駄な往復を避ける。
-  const target = url.endsWith("/") ? url : `${url}/`;
-  const res = await fetch(target, {
+  const startRes = await fetch("/admin/api/ai-jobs/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ kind, input }),
     signal,
   });
+  if (isSessionExpired(startRes)) throw new Error(SESSION_EXPIRED_MESSAGE);
+  if (!startRes.ok) throw new Error(await readErrorMessage(startRes));
+  const { jobId } = (await startRes.json()) as { jobId: string };
+  const jobUrl = `/admin/api/ai-jobs/${encodeURIComponent(jobId)}/`;
 
-  // 転送されただけ(末尾「/」の付け直しなど)ではログイン切れとは限らないため、転送先がログインページのときだけ判定する。
-  const redirectedToLogin = res.redirected && new URL(res.url).pathname.startsWith("/admin/login");
-  if (redirectedToLogin || res.status === 401) {
-    throw new Error("セッションが切れました。ログインし直してください。");
-  }
+  // 画面側で中断(または「止める」ボタン)されたら、バックグラウンドの処理も止めてもらう
+  signal?.addEventListener(
+    "abort",
+    () => {
+      void fetch(jobUrl, { method: "DELETE", keepalive: true }).catch(() => {});
+    },
+    { once: true }
+  );
 
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => "");
-    let message = text.slice(0, 200);
-    try {
-      const data = JSON.parse(text) as { error?: string };
-      if (data.error) message = data.error;
-    } catch {
-      // JSONではない場合は生テキストをそのまま使う
-    }
-    throw new Error(message || `リクエストに失敗しました(${res.status})。`);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  const flushLines = (final: boolean) => {
-    let newlineIndex = buffer.indexOf("\n");
-    while (newlineIndex >= 0) {
-      const line = buffer.slice(0, newlineIndex).trim();
-      buffer = buffer.slice(newlineIndex + 1);
-      if (line) emitLine(line);
-      newlineIndex = buffer.indexOf("\n");
-    }
-    if (final && buffer.trim()) {
-      emitLine(buffer.trim());
-      buffer = "";
-    }
-  };
-
-  const emitLine = (line: string) => {
-    let event: E;
-    try {
-      event = JSON.parse(line) as E;
-    } catch {
-      return; // 壊れた行(途中切断など)は読み飛ばす
-    }
-    onEvent(event);
-  };
-
+  let cursor = 0;
+  let failures = 0;
   for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    flushLines(false);
+    await sleep(POLL_INTERVAL_MS, signal);
+
+    let res: Response;
+    try {
+      res = await fetch(`${jobUrl}?after=${cursor}`, { cache: "no-store", signal });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      if (++failures >= MAX_CONSECUTIVE_POLL_FAILURES) {
+        throw new Error("進捗を読み取れませんでした。通信状況を確認してください(処理はバックグラウンドで続いている場合があります)。");
+      }
+      continue;
+    }
+
+    if (isSessionExpired(res)) throw new Error(SESSION_EXPIRED_MESSAGE);
+    if (res.status === 404) throw new Error("ジョブが見つかりませんでした。");
+    if (!res.ok) {
+      if (++failures >= MAX_CONSECUTIVE_POLL_FAILURES) throw new Error(await readErrorMessage(res));
+      continue;
+    }
+    failures = 0;
+
+    const data = (await res.json()) as { status: string; events: { id: number; payload: E }[] };
+    let finished = false;
+    for (const event of data.events) {
+      cursor = event.id;
+      onEvent(event.payload);
+      if (event.payload.type === "done" || event.payload.type === "error") finished = true;
+    }
+    if (finished) return;
+    // 終わっているのに終了イベントが無い(想定外)場合は、読み取りを続けずに終わる
+    if (data.events.length === 0 && (data.status === "done" || data.status === "error" || data.status === "canceled")) return;
   }
-  buffer += decoder.decode();
-  flushLines(true);
 }
