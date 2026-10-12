@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser, destroySession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLoginPath } from "@/lib/adminPaths";
 import { IconMug } from "@/components/icons/CafeIcons";
 
 const NAV_ITEMS = [
@@ -34,7 +35,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   async function logoutAction() {
     "use server";
     await destroySession();
-    redirect("/admin/login");
+    redirect(getLoginPath());
   }
 
   return (

@@ -288,3 +288,29 @@ model AiJobEvent {
   @@index([jobId, id])
 
 }
+
+// 管理画面ログインの失敗の記録(試行回数の制限に使う)。直近15分の失敗の件数を、IP・メールアドレスごとに数える。
+
+// 生のIPアドレスは保存せず、ハッシュだけを持つ。24時間より古いものは、失敗が記録されるたびに削除する。
+
+model LoginFailure {
+
+  id        Int      @id @default(autoincrement())
+
+  /// クライアントIPのハッシュ(IP+AUTH_SECRET)
+
+  ipHash    String
+
+  /// 試行されたメールアドレス(小文字・前後の空白なし)
+
+  email     String
+
+  createdAt DateTime @default(now())
+
+
+
+  @@index([ipHash, createdAt])
+
+  @@index([email, createdAt])
+
+}
