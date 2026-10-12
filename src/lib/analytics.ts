@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 const BOT_UA_PATTERN =
   /bot|spider|crawl(er)?|slurp|facebookexternalhit|whatsapp|telegram|pinterest|vkshare|discord|okhttp|curl\/|wget\/|python-requests|go-http-client|libwww-perl|headlesschrome|phantomjs|mediapartners-google|apis-google|ia_archiver|validator/i;
 
-function getClientIp(headerList: Awaited<ReturnType<typeof headers>>): string {
+export function getClientIp(headerList: Awaited<ReturnType<typeof headers>>): string {
   // ホスティング先ごとに、クライアントによる偽装ができない「一番信頼できるヘッダー」を優先する。
   // - Vercel: x-vercel-forwarded-for はVercelのエッジが必ず上書きする値で、手前に別のプロキシ
   //   (Cloudflare等)を置いても改ざんされない。x-forwarded-for もVercelが上書きするため

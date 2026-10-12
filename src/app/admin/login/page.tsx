@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { IconMug } from "@/components/icons/CafeIcons";
+import { getSessionUser } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
 
+// ログインページは、検索エンジンに載せない
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export default async function AdminLoginPage({ searchParams }: PageProps<"/admin/login">) {
+  // ログイン入口を秘密のURLへ移している場合、そのURLはproxyを通らないため、ログイン済みかどうかはここで判定する
+  if (await getSessionUser()) redirect("/admin");
+
   const { next } = await searchParams;
 
   return (
