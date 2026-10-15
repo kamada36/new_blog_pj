@@ -4,6 +4,10 @@ import { contentPath, encodeSlug } from "@/lib/slug";
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 
+// サイトマップは、既定ではビルド時に一度だけ作られ、次のデプロイまで固定される(新しく公開した記事が載らず、
+// lastmod も古いままになる)。1時間ごとに作り直し、公開した記事が遅くとも約1時間後に載るようにする。
+export const revalidate = 3600;
+
 // 現行WordPressのサイトマップと同じく、末尾スラッシュ付きの正規URL(canonicalと同じ形)を載せる。
 // 記事・固定ページはサイト直下の /{slug}/ 。日本語スラッグは %xx にエンコードして出力する。
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
