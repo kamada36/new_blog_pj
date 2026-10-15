@@ -19,6 +19,15 @@ export async function submitContact(
   _prevState: ContactFormState,
   formData: FormData
 ): Promise<ContactFormState> {
+  // ハニーポット(bot-field)に値があればボットとみなし、何も保存せず成功を装って返す(ボットに気づかせない)。
+  // Server Action はNetlify Formsのエンドポイントを通らないため、Netlify側のハニーポット判定は効かない。ここで判定する。
+  const botField = formData.get("bot-field");
+  if (typeof botField === "string" && botField.trim() !== "") {
+    // 件数だけ把握できるよう、内容は記録せずログのみ残す(Netlifyの関数ログで確認できる)。
+    console.warn("[contact] ハニーポットに入力があったため、お問い合わせを破棄しました");
+    return { status: "success", message: "お問い合わせを受け付けました。ご連絡ありがとうございます。" };
+  }
+
   const parsed = contactSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
