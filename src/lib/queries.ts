@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { jstParts, startOfJstDay, startOfJstMonth, startOfJstWeek } from "@/lib/jst";
 
 const PAGE_SIZE = 12;
 
@@ -115,8 +116,8 @@ export const getArchiveMonths = cache(async function getArchiveMonths() {
   const counts = new Map<string, { year: number; month: number; count: number }>();
   for (const article of articles) {
     if (!article.publishedAt) continue;
-    const year = article.publishedAt.getFullYear();
-    const month = article.publishedAt.getMonth() + 1;
+    // 月別アーカイブも日本時間の月で数える(アーカイブページの絞り込みと同じ基準)
+    const { year, month } = jstParts(article.publishedAt);
     const key = `${year}-${month}`;
     const existing = counts.get(key);
     if (existing) {
@@ -202,12 +203,12 @@ export async function getArticleViewStatsMap(
   const map = new Map<string, ArticleViewStats>();
   if (articleIds.length === 0) return map;
 
+  // 「本日・今週・今月」は日本時間で区切る。サーバー(Netlify)はUTCのため、サーバーの現地時刻で区切ると、
+  // 切り替わりが日本時間の9時になってしまう。
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const daysSinceMonday = (startOfToday.getDay() + 6) % 7;
-  const startOfWeek = new Date(startOfToday);
-  startOfWeek.setDate(startOfToday.getDate() - daysSinceMonday);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfToday = startOfJstDay(now);
+  const startOfWeek = startOfJstWeek(now);
+  const startOfMonth = startOfJstMonth(now);
 
   const [monthViews, articles] = await Promise.all([
     prisma.articleView.findMany({

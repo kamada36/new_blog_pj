@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArticleListingLayout } from "@/components/article/ArticleListingLayout";
 import { getArticlesPage } from "@/lib/queries";
+import { jstMonthRange } from "@/lib/jst";
 
 export async function generateMetadata({ params }: PageProps<"/archive/[year]/[month]">): Promise<Metadata> {
   const { year, month } = await params;
@@ -16,8 +17,8 @@ export default async function ArchivePage({ params, searchParams }: PageProps<"/
 
   const yearNum = Number(year);
   const monthNum = Number(month);
-  const from = new Date(yearNum, monthNum - 1, 1);
-  const to = new Date(yearNum, monthNum, 1);
+  // 旧サイトと同じく、日本時間の月で区切る(サーバーはUTCのため、new Date(y, m, 1) だと9時間ずれる)
+  const { from, to } = jstMonthRange(yearNum, monthNum);
 
   const page = Number(pageParam) > 0 ? Number(pageParam) : 1;
   const result = await getArticlesPage({
