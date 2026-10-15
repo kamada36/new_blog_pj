@@ -17,7 +17,21 @@ export function ContactForm() {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form
+      name="contact"
+      data-netlify="true"
+      netlify-honeypot="bot-field"
+      action={formAction}
+      className="flex flex-col gap-4"
+    >
+      <input type="hidden" name="form-name" value="contact" />
+      {/* ハニーポット: 人間には見えない罠。ボットが埋めると submitContact 側で破棄する。 */}
+      <div hidden aria-hidden="true" style={{ display: "none" }}>
+        <label>
+          入力しないでください
+          <input name="bot-field" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
       <div>
         <label htmlFor="name" className="text-sm font-semibold">
           お名前
