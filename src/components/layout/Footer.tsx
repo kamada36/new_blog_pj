@@ -2,10 +2,11 @@ import Link from "next/link";
 import { getSiteSetting } from "@/lib/queries";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { Container } from "@/components/layout/Container";
+import { jstParts } from "@/lib/jst";
 
 export async function Footer() {
   const siteSetting = await getSiteSetting();
-  const year = new Date().getFullYear();
+  const year = jstParts(new Date()).year;
 
   return (
     <footer className="mt-16 border-t border-border bg-surface-muted">

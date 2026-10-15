@@ -20,9 +20,12 @@ import {
 import { getMaxOutputTokensForModel, isVerbosityRiskModel } from "./models";
 import { computeOutlinePlan } from "./outlinePlan";
 import { markdownToPlainText } from "./markdown";
+import { jstParts } from "../jst";
 
+// 日本時間の日付(サーバーはUTCのため、getFullYear()等だと、日本時間の0〜9時に前日の日付がAIや「最終更新日」に入る)
 export function formatJapaneseDate(date = new Date()): string {
-  return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, "0")}月${String(date.getDate()).padStart(2, "0")}日`;
+  const { year, month, day } = jstParts(date);
+  return `${year}年${String(month).padStart(2, "0")}月${String(day).padStart(2, "0")}日`;
 }
 
 // ─── Stage 1: リサーチ & 構成案(Google Search Grounding) ─────────────────────
