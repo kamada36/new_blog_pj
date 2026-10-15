@@ -181,10 +181,10 @@ export async function recordArticleView(id: string, visitorHash: string) {
   if (recentDuplicate) return;
 
   await prisma.$transaction([
-    prisma.article.update({
-      where: { id },
-      data: { viewCount: { increment: 1 } },
-    }),
+    // prisma.article.update だと、@updatedAt が自動で現在時刻になり、閲覧されるたびに記事の「更新日」が
+    // 動いてしまう(サイトマップの lastmod や構造化データの dateModified にも出る)。
+    // 閲覧数の加算は本文の更新ではないため、更新日に触れないSQLで加算する。
+    prisma.$executeRaw`UPDATE "Article" SET "viewCount" = "viewCount" + 1 WHERE "id" = ${id}`,
     prisma.articleView.create({ data: { articleId: id, visitorHash } }),
   ]);
 }
