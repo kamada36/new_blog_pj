@@ -66,6 +66,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
   const mlimit = oneOf(first(sp.mlimit), MATRIX_LIMITS, 20);
   const cdays = oneOf(first(sp.cdays), CHART_DAYS, 30);
   const articleId = first(sp.article);
+  const showZero = first(sp.zero) === "1";
 
   const rowsNeeded = Math.max(30, mdays, cdays);
   const [categories, articles, rows, totalAgg, selectedArticle] = await Promise.all([
@@ -87,14 +88,25 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
   const siteDaily = dailySeries(rows, cdays);
 
   // ランキング: 選択した期間の閲覧数で、絞り込み・並べ替え
-  const ranking = buildRanking(articles, rows)
-    .map((row) => ({ row, value: viewsFor(row, period) }))
-    .filter(({ value }) => (min === null || value >= min) && (max === null || value <= max));
+  const allRanked = buildRanking(articles, rows).map((row) => ({ row, value: viewsFor(row, period) }));
+  // 選んだ期間の閲覧が0件の記事は、どの条件でも出さない(0同士は並び順に意味がなく、閲覧と無関係な記事が上位に見えてしまう)。
+  // 閲覧が0件の記事も見たいときだけ、「閲覧0の記事も表示」にチェックを入れる(閲覧数の範囲を指定していても同じ)。
+  const hideZero = !showZero;
+  const ranking = allRanked.filter(
+    ({ value }) => (!hideZero || value > 0) && (min === null || value >= min) && (max === null || value <= max)
+  );
+  const hiddenZeroCount = hideZero ? allRanked.length - ranking.length : 0;
   const dir = order === "asc" ? 1 : -1;
   ranking.sort((a, b) => {
     if (sort === "title") return dir * a.row.title.localeCompare(b.row.title, "ja");
     if (sort === "published") return dir * ((a.row.publishedAt?.getTime() ?? 0) - (b.row.publishedAt?.getTime() ?? 0));
-    return dir * (a.value - b.value) || b.row.total - a.row.total;
+    // 閲覧数順: 選んだ期間の閲覧数。同点は、より広い期間(7日 → 30日 → 累計)の閲覧数が多い順
+    return (
+      dir * (a.value - b.value) ||
+      b.row.week - a.row.week ||
+      b.row.month - a.row.month ||
+      b.row.total - a.row.total
+    );
   });
   const rankingShown = ranking.slice(0, RANKING_LIMIT);
 
@@ -104,7 +116,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
   // 現在の条件を保ったまま、一部だけ変えたリンクを作る
   const href = (overrides: Record<string, string | undefined>, hash = "") => {
     const current: Record<string, string> = {
-      period, sort, order, categoryId, q, min: minRaw, max: maxRaw,
+      period, sort, order, categoryId, q, min: minRaw, max: maxRaw, zero: showZero ? "1" : "",
       mdays: String(mdays), mlimit: String(mlimit), cdays: String(cdays), article: articleId,
     };
     const params = new URLSearchParams();
@@ -235,6 +247,10 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
               <option value="asc">少ない・古い順</option>
             </select>
           </div>
+          <label className="flex items-center gap-1.5 py-2 text-xs font-semibold text-foreground-muted">
+            <input type="checkbox" name="zero" value="1" defaultChecked={showZero} />
+            閲覧0の記事も表示
+          </label>
           <button type="submit" className="rounded-full bg-foreground px-5 py-2 text-sm font-semibold text-background hover:opacity-90">
             絞り込む
           </button>
@@ -245,6 +261,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
 
         <p className="mt-3 text-xs text-foreground-muted">
           該当 {ranking.length.toLocaleString()} 件{ranking.length > RANKING_LIMIT ? `(上位${RANKING_LIMIT}件を表示)` : ""}
+          {hiddenZeroCount > 0 ? ` ・ ${periodLabel}の閲覧が0件の記事 ${hiddenZeroCount.toLocaleString()} 件は非表示(「閲覧0の記事も表示」で表示できます)` : ""}
           {period === "all" ? " ・ 累計は旧サイトからの引き継ぎ分を含みます" : ""}
         </p>
         <div className="mt-2 overflow-x-auto rounded-2xl border border-border bg-surface">
@@ -288,7 +305,9 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
               {rankingShown.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-sm text-foreground-muted">
-                    条件に合う記事がありません。
+                    {hideZero && hiddenZeroCount > 0
+                      ? `${periodLabel}に閲覧された記事は、まだありません。日付が変わった直後などは、閲覧の記録がありません。`
+                      : "条件に合う記事がありません。"}
                   </td>
                 </tr>
               )}
