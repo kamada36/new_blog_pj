@@ -31,6 +31,9 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]["value"];
 
+// ランキング表の列の見出し(選択肢の名前より短くする)
+const COLUMN_LABELS: Record<Period, string> = { today: "本日", yesterday: "昨日", "7d": "7日", "30d": "30日", all: "累計" };
+
 const RANKING_LIMIT = 100;
 const MATRIX_DAYS = [14, 30, 60] as const;
 const MATRIX_LIMITS = [20, 50] as const;
@@ -278,22 +281,21 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
           {period === "all" ? " ・ 累計は旧サイトからの引き継ぎ分を含みます" : ""}
         </p>
         <div className="mt-2 overflow-x-auto rounded-2xl border border-border bg-surface">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-border bg-surface-muted text-xs text-foreground-muted">
               <tr>
                 <th className="px-4 py-3">順位</th>
                 <th className="px-4 py-3">記事</th>
-                <th className="px-4 py-3 text-right">{periodLabel}</th>
-                <th className="px-4 py-3 text-right">本日</th>
-                <th className="px-4 py-3 text-right">昨日</th>
-                <th className="px-4 py-3 text-right">7日</th>
-                <th className="px-4 py-3 text-right">30日</th>
-                <th className="px-4 py-3 text-right">累計</th>
+                {PERIODS.map((p) => (
+                  <th key={p.value} className={`px-4 py-3 text-right ${p.value === period ? "font-black text-foreground" : ""}`}>
+                    {COLUMN_LABELS[p.value]}
+                  </th>
+                ))}
                 <th className="px-4 py-3">日別</th>
               </tr>
             </thead>
             <tbody>
-              {rankingShown.map(({ row, value }, i) => (
+              {rankingShown.map(({ row }, i) => (
                 <tr key={row.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5 text-xs text-foreground-muted">{i + 1}</td>
                   <td className="px-4 py-2.5">
@@ -304,12 +306,14 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
                       {row.categoryName}{row.publishedAt ? ` ・ ${formatDate(row.publishedAt)}` : ""}
                     </p>
                   </td>
-                  <td className="px-4 py-2.5 text-right font-display font-black">{value.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right">{row.today.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right">{row.yesterday.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right">{row.week.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right">{row.month.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right">{row.total.toLocaleString()}</td>
+                  {PERIODS.map((p) => (
+                    <td
+                      key={p.value}
+                      className={`px-4 py-2.5 text-right ${p.value === period ? "bg-accent-soft/40 font-display font-black" : ""}`}
+                    >
+                      {viewsFor(row, p.value).toLocaleString()}
+                    </td>
+                  ))}
                   <td className="px-4 py-2.5">
                     <Link href={href({ article: row.id }, "#article-chart")} className="text-xs font-semibold text-accent-dark hover:underline">
                       推移を見る
@@ -319,7 +323,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
               ))}
               {rankingShown.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-foreground-muted">
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-foreground-muted">
                     {hideZero && hiddenZeroCount > 0
                       ? `${periodLabel}に閲覧された記事は、${period === "today" ? "まだありません。日付が変わった直後などは、閲覧の記録がありません。" : "ありません。"}`
                       : "条件に合う記事がありません。"}
