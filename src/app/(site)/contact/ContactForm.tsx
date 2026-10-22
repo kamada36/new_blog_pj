@@ -17,14 +17,9 @@ export function ContactForm() {
   }
 
   return (
-    <form
-      name="contact"
-      data-netlify="true"
-      netlify-honeypot="bot-field"
-      action={formAction}
-      className="flex flex-col gap-4"
-    >
-      <input type="hidden" name="form-name" value="contact" />
+    // Netlify Forms 用の属性(data-netlify など)は付けない。送信は Server Action(submitContact)で処理しており、
+    // このページは事前生成されるため、付けるとNetlifyのNext.jsプラグインが「Netlify Formsの移行が必要」としてビルドを失敗させる。
+    <form action={formAction} className="flex flex-col gap-4">
       {/* ハニーポット: 人間には見えない罠。ボットが埋めると submitContact 側で破棄する。 */}
       <div hidden aria-hidden="true" style={{ display: "none" }}>
         <label>
