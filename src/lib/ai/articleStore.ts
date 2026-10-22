@@ -1,7 +1,7 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { contentPath, isReservedSlug, slugify } from "@/lib/slug";
+import { isReservedSlug, slugify } from "@/lib/slug";
 import { DEFAULT_RESIDENT, type CategoryOption, type ResidentPersona } from "./guidelines";
 
 // AI生成・AIリライトの結果をSupabase(Postgres/Prisma)へ保存するデータ層。
@@ -193,8 +193,8 @@ export async function upsertArticleDraft(
       });
 
   // 公開済みの記事を追加指示で更新した場合に、公開ページへ反映する
-  revalidatePath("/");
-  revalidatePath(contentPath(saved.slug));
+  // 公開ページはキャッシュ(ISR)されているため、サイト全体を更新する(ヘッダー・サイドバー・一覧も変わる)
+  revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
   return saved;
 }
@@ -249,9 +249,8 @@ export async function saveRewriteBackupIfAbsent(article: {
   return true;
 }
 
-function revalidateArticlePaths(slug: string) {
-  revalidatePath("/");
-  revalidatePath(contentPath(slug));
+function revalidateArticlePaths() {
+  revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
   revalidatePath("/admin/rewrite");
 }
@@ -269,7 +268,7 @@ export async function applyRewrite(
     where: { id: article.id },
     data: { contentMarkdown, status, publishedAt },
   });
-  revalidateArticlePaths(article.slug);
+  revalidateArticlePaths();
   return { status };
 }
 
@@ -290,7 +289,7 @@ export async function revertRewrite(articleId: string): Promise<{ title: string;
     }),
     prisma.articleRewriteBackup.delete({ where: { articleId } }),
   ]);
-  revalidateArticlePaths(article.slug);
+  revalidateArticlePaths();
   return article;
 }
 

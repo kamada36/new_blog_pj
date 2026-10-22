@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { DEFAULT_LOGIN_PATH, getLoginPath, isLoginPathHidden } from "@/lib/adminPaths";
+import { ADMIN_FLAG_COOKIE, ADMIN_FLAG_MAX_AGE_SECONDS } from "@/lib/adminFlag";
 
 const SESSION_COOKIE = "rc_session";
 
@@ -28,6 +29,23 @@ function notFound(request: NextRequest) {
   return NextResponse.rewrite(new URL("/page-not-found-xyz/", request.url));
 }
 
+/**
+ * ログイン済みの管理者のレスポンスに、公開ページ向けの目印Cookie(rc_admin)を付ける。
+ * この目印が導入される前にログインしたセッションも、管理画面を開けば目印が付く(再ログイン不要)。
+ */
+function withAdminFlag(request: NextRequest, response: NextResponse) {
+  if (request.cookies.get(ADMIN_FLAG_COOKIE)?.value !== "1") {
+    response.cookies.set(ADMIN_FLAG_COOKIE, "1", {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: ADMIN_FLAG_MAX_AGE_SECONDS,
+    });
+  }
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
   // trailingSlash: true のため、環境(Netlify など)によってパスが末尾「/」付きで渡る。
   // 揃えないとログインページを判定できず、未ログイン時に /admin/login へ転送し続けるループになる。
@@ -48,7 +66,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (authenticated) return NextResponse.next();
+  if (authenticated) return withAdminFlag(request, NextResponse.next());
 
   if (hidden) {
     // セッションのCookieが無い訪問者(通常の閲覧者・ボット)には、管理画面があることも見せない。

@@ -11,6 +11,12 @@ import { contentPath, decodeSlug } from "@/lib/slug";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+// 記事・固定ページは、最初にアクセスされたときに生成してキャッシュする(ISR)。ビルド時には、DBを読まない。
+// (空の配列を返すと、ビルド時には1件も生成せず、初回アクセス時に生成される)
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: PageProps<"/[slug]">): Promise<Metadata> {
   const slug = decodeSlug((await params).slug);
 

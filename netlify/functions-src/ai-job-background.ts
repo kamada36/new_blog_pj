@@ -7,11 +7,13 @@ import { verifyJobToken } from "../../src/lib/ai/jobs/token";
 // netlify/functions/ai-job-background.mjs へ出力する(Gitには入れない)。
 // 呼び出し元(app の POST /admin/api/ai-jobs/)だけが計算できるトークンを確認し、第三者の呼び出しは何もせず終える。
 export default async function handler(req: Request): Promise<void> {
-  const body = (await req.json().catch(() => null)) as { jobId?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { jobId?: unknown; origin?: unknown } | null;
   const jobId = typeof body?.jobId === "string" ? body.jobId : "";
   if (!jobId || !verifyJobToken(jobId, req.headers.get("x-ai-job-token"))) {
     console.warn("[ai-job] 認証できない呼び出しを無視しました。");
     return;
   }
-  await runAiJob(jobId);
+  // 完了時に、公開ページのキャッシュの更新を依頼する先(runAiJob の側で、許可したドメインかを確認する)
+  const origin = typeof body?.origin === "string" ? body.origin : undefined;
+  await runAiJob(jobId, { origin });
 }

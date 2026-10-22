@@ -62,6 +62,12 @@ export default async function AdminDashboardPage() {
         >
           新しい記事を書く
         </Link>
+        <Link
+          href="/admin/analytics"
+          className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:border-accent hover:text-accent-dark"
+        >
+          閲覧数分析を見る
+        </Link>
       </div>
     </div>
   );

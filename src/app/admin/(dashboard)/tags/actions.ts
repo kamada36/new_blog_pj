@@ -23,6 +23,8 @@ export async function createTag(formData: FormData) {
     return;
   }
   await prisma.tag.create({ data: parsed.data });
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/tags");
 }
 
@@ -34,10 +36,14 @@ export async function updateTag(id: string, formData: FormData) {
     return;
   }
   await prisma.tag.update({ where: { id }, data: parsed.data });
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/tags");
 }
 
 export async function deleteTag(id: string) {
   await prisma.tag.delete({ where: { id } });
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/tags");
 }

@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // 統合元の参照用ツール(直接編集しない・ビルド対象外)
     "reference-tools/**",
+    // Netlifyのバックグラウンド関数のビルド出力(scripts/build-netlify-functions.mjs が生成。Git管理外)
+    "netlify/functions/**",
   ]),
 ]);
 

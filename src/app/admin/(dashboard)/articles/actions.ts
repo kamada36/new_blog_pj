@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { resolveImageField } from "@/lib/uploadField";
-import { contentPath, isReservedSlug, slugify } from "@/lib/slug";
+import { isReservedSlug, slugify } from "@/lib/slug";
 
 
 const articleSchema = z.object({
@@ -109,8 +109,8 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
     });
   }
 
-  revalidatePath("/");
-  revalidatePath(contentPath(data.slug));
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   redirect("/admin/articles");
 }
 
@@ -119,7 +119,8 @@ export async function deleteArticle(id: string) {
   if (!author) return;
 
   await prisma.article.delete({ where: { id } });
-  revalidatePath("/");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
 }
 
@@ -128,7 +129,8 @@ export async function bulkDeleteArticles(ids: string[]) {
   if (!author || ids.length === 0) return;
 
   await prisma.article.deleteMany({ where: { id: { in: ids } } });
-  revalidatePath("/");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
 }
 
@@ -144,6 +146,7 @@ export async function bulkUpdateArticleStatus(ids: string[], status: "draft" | "
       data: { publishedAt: new Date() },
     });
   }
-  revalidatePath("/");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
 }

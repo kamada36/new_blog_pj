@@ -35,12 +35,17 @@ export function getClientIp(headerList: Awaited<ReturnType<typeof headers>>): st
   return lastForwardedIp ?? "";
 }
 
+/** User-Agentが、ボット・クローラー・コマンドラインツール等(または空)か。 */
+export function isBotUserAgent(userAgent: string): boolean {
+  return userAgent === "" || BOT_UA_PATTERN.test(userAgent);
+}
+
 export async function getViewRequestContext() {
   const headerList = await headers();
   const userAgent = headerList.get("user-agent") ?? "";
   const ip = getClientIp(headerList);
 
-  const isBot = userAgent === "" || BOT_UA_PATTERN.test(userAgent);
+  const isBot = isBotUserAgent(userAgent);
 
   // 生のIPは保存せず、UAと合わせて一方向ハッシュ化した「訪問者識別子」だけを使う。
   const salt = process.env.AUTH_SECRET ?? "";

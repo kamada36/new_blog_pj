@@ -7,6 +7,7 @@ import { runArticleJob } from "./article";
 import type { JobContext } from "./context";
 import { runOutlineJob } from "./outline";
 import { runRewriteJob } from "./rewrite";
+import { notifyRevalidation } from "./revalidate";
 
 // AIジョブの実行。Netlifyのバックグラウンド関数(最大15分)と、ローカル(Next.jsのサーバー内)の両方から呼ばれる。
 // 処理の途中経過は「イベント」としてDB(AiJobEvent)へ書き、画面が定期的に読み取る。
@@ -18,7 +19,7 @@ const TICK_MS = 1000;
 
 type AnyEvent = { type: string; text?: string };
 
-export async function runAiJob(jobId: string): Promise<void> {
+export async function runAiJob(jobId: string, options: { origin?: string } = {}): Promise<void> {
   // 二重起動(再送など)や、起動前に取り消されたジョブは何もしない
   const claimed = await prisma.aiJob.updateMany({ where: { id: jobId, status: "queued" }, data: { status: "running" } });
   if (claimed.count === 0) return;
@@ -95,5 +96,7 @@ export async function runAiJob(jobId: string): Promise<void> {
     await writes;
     // 取り消されたジョブの status(canceled)は上書きしない
     await prisma.aiJob.updateMany({ where: { id: jobId, status: "running" }, data: { status: finalStatus } });
+    // 記事を保存した場合は、公開ページ(キャッシュ済み)の更新を依頼する(バックグラウンド関数のときだけ。失敗しても処理は成功のまま)
+    if (finalStatus === "done") await notifyRevalidation(options.origin);
   }
 }

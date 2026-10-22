@@ -69,12 +69,14 @@ export async function savePage(_prevState: PageFormState, formData: FormData): P
     await prisma.page.create({ data: payload });
   }
 
-  revalidatePath(`/${data.slug}`);
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
   redirect("/admin/pages");
 }
 
 export async function deletePage(id: string) {
   await prisma.page.delete({ where: { id } });
+  revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
 }

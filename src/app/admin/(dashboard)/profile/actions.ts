@@ -45,8 +45,8 @@ export async function updateProfile(formData: FormData) {
     data: { ...parsed.data, ...(avatarUrl ? { avatarUrl } : {}) },
   });
 
-  revalidatePath("/");
-  revalidatePath("/profile");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidatePath("/", "layout");
   revalidatePath("/admin/profile");
   redirectWithMessage("success", "プロフィールを更新しました。");
 }
