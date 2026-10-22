@@ -39,22 +39,25 @@ export async function loadViewRows(days: number): Promise<ViewRow[]> {
 }
 
 export type PeriodSummary = { views: number; visitors: number };
-export type Summary = { today: PeriodSummary; week: PeriodSummary; month: PeriodSummary };
+export type Summary = { today: PeriodSummary; yesterday: PeriodSummary; week: PeriodSummary; month: PeriodSummary };
 
-/** 今日・直近7日・直近30日の、閲覧数と訪問者数(重複なし)。rows には、直近30日以上を含めること。 */
+/** 今日・昨日・直近7日・直近30日の、閲覧数と訪問者数(重複なし)。rows には、直近30日以上を含めること。 */
 export function summarize(rows: ViewRow[], now: Date = new Date()): Summary {
   const todayStart = startOfJstDay(now).getTime();
+  // 昨日は、昨日の 0:00 から今日の 0:00 の前まで(今日の分は含めない)
   const windows = {
-    today: todayStart,
-    week: todayStart - 6 * DAY_MS,
-    month: todayStart - 29 * DAY_MS,
+    today: { from: todayStart, to: Infinity },
+    yesterday: { from: todayStart - DAY_MS, to: todayStart },
+    week: { from: todayStart - 6 * DAY_MS, to: Infinity },
+    month: { from: todayStart - 29 * DAY_MS, to: Infinity },
   } as const;
-  const views = { today: 0, week: 0, month: 0 };
-  const visitors = { today: new Set<string>(), week: new Set<string>(), month: new Set<string>() };
+  const keys = ["today", "yesterday", "week", "month"] as const;
+  const views = { today: 0, yesterday: 0, week: 0, month: 0 };
+  const visitors = { today: new Set<string>(), yesterday: new Set<string>(), week: new Set<string>(), month: new Set<string>() };
   for (const row of rows) {
     const t = row.createdAt.getTime();
-    for (const key of ["today", "week", "month"] as const) {
-      if (t >= windows[key]) {
+    for (const key of keys) {
+      if (t >= windows[key].from && t < windows[key].to) {
         views[key] += 1;
         visitors[key].add(row.visitorHash);
       }
@@ -62,6 +65,7 @@ export function summarize(rows: ViewRow[], now: Date = new Date()): Summary {
   }
   return {
     today: { views: views.today, visitors: visitors.today.size },
+    yesterday: { views: views.yesterday, visitors: visitors.yesterday.size },
     week: { views: views.week, visitors: visitors.week.size },
     month: { views: views.month, visitors: visitors.month.size },
   };
@@ -86,6 +90,7 @@ export type RankingRow = {
   categoryName: string;
   publishedAt: Date | null;
   today: number;
+  yesterday: number;
   week: number;
   month: number;
   /** 累計(旧サイトからの引き継ぎ分を含む。記事の viewCount) */
@@ -101,23 +106,25 @@ export type RankingArticle = {
   category: { name: string };
 };
 
-/** 記事ごとの、今日・直近7日・直近30日・累計の閲覧数。閲覧のない記事も 0 で含める。 */
+/** 記事ごとの、今日・昨日・直近7日・直近30日・累計の閲覧数。閲覧のない記事も 0 で含める。 */
 export function buildRanking(articles: RankingArticle[], rows: ViewRow[], now: Date = new Date()): RankingRow[] {
   const todayStart = startOfJstDay(now).getTime();
   const weekStart = todayStart - 6 * DAY_MS;
   const monthStart = todayStart - 29 * DAY_MS;
-  const stats = new Map<string, { today: number; week: number; month: number }>();
+  const yesterdayStart = todayStart - DAY_MS;
+  const stats = new Map<string, { today: number; yesterday: number; week: number; month: number }>();
   for (const row of rows) {
     const t = row.createdAt.getTime();
     if (t < monthStart) continue;
-    const s = stats.get(row.articleId) ?? { today: 0, week: 0, month: 0 };
+    const s = stats.get(row.articleId) ?? { today: 0, yesterday: 0, week: 0, month: 0 };
     s.month += 1;
     if (t >= weekStart) s.week += 1;
     if (t >= todayStart) s.today += 1;
+    else if (t >= yesterdayStart) s.yesterday += 1;
     stats.set(row.articleId, s);
   }
   return articles.map((a) => {
-    const s = stats.get(a.id) ?? { today: 0, week: 0, month: 0 };
+    const s = stats.get(a.id) ?? { today: 0, yesterday: 0, week: 0, month: 0 };
     return {
       id: a.id,
       title: a.title,
@@ -125,6 +132,7 @@ export function buildRanking(articles: RankingArticle[], rows: ViewRow[], now: D
       categoryName: a.category.name,
       publishedAt: a.publishedAt,
       today: s.today,
+      yesterday: s.yesterday,
       week: s.week,
       month: s.month,
       total: a.viewCount,

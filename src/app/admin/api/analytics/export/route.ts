@@ -4,7 +4,7 @@ import { buildRanking, jstDateKey, loadViewRows, MAX_ANALYTICS_DAYS, recentDays 
 import { unauthorizedResponse } from "@/lib/ai/httpResponses";
 
 // 閲覧数分析のCSV出力(Excelで文字化けしないよう、BOM付きのUTF-8)。
-//   type=ranking : 記事ごとの 今日 / 直近7日 / 直近30日 / 累計
+//   type=ranking : 記事ごとの 今日 / 昨日 / 直近7日 / 直近30日 / 累計
 //   type=daily   : 日付ごとの 記事別の閲覧数(閲覧のあった組み合わせのみ。days=7〜90日)
 function csvEscape(value: string | number): string {
   const text = String(value);
@@ -42,8 +42,8 @@ export async function GET(req: Request) {
     const ranking = buildRanking(articles, rows).sort((a, b) => b.month - a.month || b.total - a.total);
     return csvResponse(
       [
-        ["タイトル", "スラッグ", "カテゴリー", "公開日", "本日", "直近7日", "直近30日", "累計"],
-        ...ranking.map((r) => [r.title, r.slug, r.categoryName, r.publishedAt ? jstDateKey(r.publishedAt) : "", r.today, r.week, r.month, r.total]),
+        ["タイトル", "スラッグ", "カテゴリー", "公開日", "本日", "昨日", "直近7日", "直近30日", "累計"],
+        ...ranking.map((r) => [r.title, r.slug, r.categoryName, r.publishedAt ? jstDateKey(r.publishedAt) : "", r.today, r.yesterday, r.week, r.month, r.total]),
       ],
       `views-ranking-${today}.csv`
     );

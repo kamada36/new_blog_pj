@@ -17,6 +17,7 @@ import {
 
 const PERIODS = [
   { value: "today", label: "本日" },
+  { value: "yesterday", label: "昨日" },
   { value: "7d", label: "直近7日" },
   { value: "30d", label: "直近30日" },
   { value: "all", label: "累計" },
@@ -48,7 +49,18 @@ function oneOf<T extends string | number>(value: string, allowed: readonly T[], 
 }
 
 function viewsFor(row: RankingRow, period: Period): number {
-  return period === "today" ? row.today : period === "7d" ? row.week : period === "30d" ? row.month : row.total;
+  switch (period) {
+    case "today":
+      return row.today;
+    case "yesterday":
+      return row.yesterday;
+    case "7d":
+      return row.week;
+    case "30d":
+      return row.month;
+    default:
+      return row.total;
+  }
 }
 
 export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/admin/analytics">) {
@@ -153,9 +165,10 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
       </div>
 
       {/* 概要 */}
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
         {[
           { label: "本日の閲覧数", value: summary.today.views, sub: `訪問者 ${summary.today.visitors.toLocaleString()}` },
+          { label: "昨日の閲覧数", value: summary.yesterday.views, sub: `訪問者 ${summary.yesterday.visitors.toLocaleString()}` },
           { label: "直近7日の閲覧数", value: summary.week.views, sub: `訪問者 ${summary.week.visitors.toLocaleString()}` },
           { label: "直近30日の閲覧数", value: summary.month.views, sub: `訪問者 ${summary.month.visitors.toLocaleString()}` },
           { label: "累計(引き継ぎ分を含む)", value: totalAgg._sum.viewCount ?? 0, sub: "公開中の記事の合計" },
@@ -265,13 +278,14 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
           {period === "all" ? " ・ 累計は旧サイトからの引き継ぎ分を含みます" : ""}
         </p>
         <div className="mt-2 overflow-x-auto rounded-2xl border border-border bg-surface">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="border-b border-border bg-surface-muted text-xs text-foreground-muted">
               <tr>
                 <th className="px-4 py-3">順位</th>
                 <th className="px-4 py-3">記事</th>
                 <th className="px-4 py-3 text-right">{periodLabel}</th>
                 <th className="px-4 py-3 text-right">本日</th>
+                <th className="px-4 py-3 text-right">昨日</th>
                 <th className="px-4 py-3 text-right">7日</th>
                 <th className="px-4 py-3 text-right">30日</th>
                 <th className="px-4 py-3 text-right">累計</th>
@@ -292,6 +306,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
                   </td>
                   <td className="px-4 py-2.5 text-right font-display font-black">{value.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right">{row.today.toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-right">{row.yesterday.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right">{row.week.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right">{row.month.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right">{row.total.toLocaleString()}</td>
@@ -304,9 +319,9 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
               ))}
               {rankingShown.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-foreground-muted">
+                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-foreground-muted">
                     {hideZero && hiddenZeroCount > 0
-                      ? `${periodLabel}に閲覧された記事は、まだありません。日付が変わった直後などは、閲覧の記録がありません。`
+                      ? `${periodLabel}に閲覧された記事は、${period === "today" ? "まだありません。日付が変わった直後などは、閲覧の記録がありません。" : "ありません。"}`
                       : "条件に合う記事がありません。"}
                   </td>
                 </tr>
