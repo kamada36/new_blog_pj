@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Container } from "@/components/layout/Container";
 import { ArticleBody } from "@/components/article/ArticleBody";
+import { loadImageSizes } from "@/lib/imageSize";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { getPrimaryAuthor, getPageBySlug, getShortcodes } from "@/lib/queries";
 
@@ -24,6 +25,9 @@ export default async function ProfilePage() {
     getShortcodes(),
   ]);
   if (!author) notFound();
+
+  const profileMarkdown = page?.contentMarkdown || author.bio;
+  const imageSizes = await loadImageSizes(profileMarkdown);
 
   return (
     <Container className="max-w-2xl py-12">
@@ -67,7 +71,7 @@ export default async function ProfilePage() {
       </div>
 
       <div className="mt-10">
-        <ArticleBody markdown={page?.contentMarkdown || author.bio} shortcodes={shortcodes} />
+        <ArticleBody markdown={profileMarkdown} shortcodes={shortcodes} imageSizes={imageSizes} />
       </div>
     </Container>
   );

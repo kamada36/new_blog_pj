@@ -4,6 +4,7 @@ import { ArticleView } from "@/components/article/ArticleView";
 import { StaticPageView } from "@/components/page/StaticPageView";
 import { getArticleBySlug, getPageBySlug, getShortcodes } from "@/lib/queries";
 import { contentPath, decodeSlug } from "@/lib/slug";
+import { loadImageSizes } from "@/lib/imageSize";
 
 // 記事も固定ページも、サイト直下の /{slug}/ で表示する(現行WordPressのURLと同じ形のまま移行して、
 // 検索順位の引き継ぎを転送(リダイレクト)に頼らないため)。公開記事を先に探し、無ければ固定ページを探す。
@@ -56,5 +57,6 @@ export default async function SlugPage({ params }: PageProps<"/[slug]">) {
 
   const [page, shortcodes] = await Promise.all([getPageBySlug(slug), getShortcodes()]);
   if (!page) notFound();
-  return <StaticPageView title={page.title} markdown={page.contentMarkdown} shortcodes={shortcodes} />;
+  const imageSizes = await loadImageSizes(page.contentMarkdown);
+  return <StaticPageView title={page.title} markdown={page.contentMarkdown} shortcodes={shortcodes} imageSizes={imageSizes} />;
 }

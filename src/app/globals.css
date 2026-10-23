@@ -26,7 +26,7 @@
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
   --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-display: var(--font-body);
   --font-brand: var(--font-brand);
 }
 
@@ -51,7 +51,7 @@ body {
 }
 
 .font-display {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
 }
 
 .font-brand {
@@ -664,7 +664,7 @@ body {
 }
 
 .article-body h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.4rem;
   font-weight: 700;
   margin-top: 2.5em;
@@ -674,7 +674,7 @@ body {
 }
 
 .article-body h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.15rem;
   font-weight: 700;
   margin-top: 2em;
