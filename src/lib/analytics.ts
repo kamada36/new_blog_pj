@@ -19,9 +19,9 @@ export function getClientIp(headerList: Awaited<ReturnType<typeof headers>>): st
   //   最後に追記した値(右端)、もしくはプロキシが設定するx-real-ipのみ。
   // - Cloudflare(前段のCDN)経由: Netlifyから見える接続元はCloudflareのIPになるため、訪問者のIPは cf-connecting-ip に入る。
   //   ただしこのヘッダーは、Netlifyのアドレスへ直接アクセスした人が偽装できる。そこでCloudflareの変換ルールが
-  //   付ける秘密のヘッダー(x-cf-origin-secret)が、環境変数 CF_ORIGIN_SECRET と一致するときだけ信用する。
+  //   付ける秘密のヘッダー(x-origin-auth)が、環境変数 CF_ORIGIN_SECRET と一致するときだけ信用する。
   const originSecret = process.env.CF_ORIGIN_SECRET;
-  if (originSecret && headerList.get("x-cf-origin-secret") === originSecret) {
+  if (originSecret && headerList.get("x-origin-auth") === originSecret) {
     const cfIp = headerList.get("cf-connecting-ip");
     if (cfIp) return cfIp.trim();
   }
