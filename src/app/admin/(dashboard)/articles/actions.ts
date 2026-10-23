@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { resolveImageField } from "@/lib/uploadField";
@@ -110,7 +111,7 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
   }
 
   // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
-  revalidatePath("/", "layout");
+  revalidateSite();
   redirect("/admin/articles");
 }
 
@@ -120,7 +121,7 @@ export async function deleteArticle(id: string) {
 
   await prisma.article.delete({ where: { id } });
   // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
-  revalidatePath("/", "layout");
+  revalidateSite();
   revalidatePath("/admin/articles");
 }
 
@@ -130,7 +131,7 @@ export async function bulkDeleteArticles(ids: string[]) {
 
   await prisma.article.deleteMany({ where: { id: { in: ids } } });
   // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
-  revalidatePath("/", "layout");
+  revalidateSite();
   revalidatePath("/admin/articles");
 }
 
@@ -147,6 +148,6 @@ export async function bulkUpdateArticleStatus(ids: string[], status: "draft" | "
     });
   }
   // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
-  revalidatePath("/", "layout");
+  revalidateSite();
   revalidatePath("/admin/articles");
 }

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { verifyRevalidateSignature } from "@/lib/ai/jobs/token";
+import { purgeCloudflareHtmlAfterResponse } from "@/lib/revalidateSite";
 
 // AIジョブ(バックグラウンド関数)の完了時に、公開ページのキャッシュの再生成を依頼される。
 // バックグラウンド関数は、Next.jsの外で動くため、revalidatePath を直接呼べない。
@@ -31,5 +32,7 @@ export async function POST(req: Request) {
     if (type) revalidatePath(path, type);
     else revalidatePath(path);
   }
+  // Cloudflareにキャッシュされた公開ページのHTMLも削除する(反映が済んでから、レスポンス後に実行)
+  if (valid.length > 0) purgeCloudflareHtmlAfterResponse();
   return Response.json({ revalidated: valid.length }, { headers: { "Cache-Control": "no-store" } });
 }

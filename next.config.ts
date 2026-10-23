@@ -69,6 +69,10 @@ const nextConfig: NextConfig = {
     return [
       // ログイン入口は、検索エンジンに載せない
       ...(adminLoginPath ? [{ source: adminLoginPath, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }] : []),
+      // 公開ページには Cache-Tag を付ける。Cloudflare(前段のCDN)は、このタグを指定して、HTMLのキャッシュだけをまとめて削除できる
+      // (src/lib/cloudflare.ts)。管理画面・API・画像などの静的ファイル・検索は対象外(Cloudflare側のCache Rulesでも、キャッシュしない)。
+      // タグ名は src/lib/cloudflare.ts の HTML_CACHE_TAG と同じ。Cloudflareは、このヘッダーを、利用者には返さずに取り除く。
+      { source: "/((?!_next/|admin|api|search).*)", headers: [{ key: "Cache-Tag", value: "site-html" }] },
       {
         source: "/:path*",
         has: [{ type: "host", value: nonProductionHostPattern() }],
