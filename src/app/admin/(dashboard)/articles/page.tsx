@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import { getAdminViewStatsForArticles } from "@/lib/adminView";
+import { getArticleViewStatsMap } from "@/lib/queries";
 import { ArticlesTable } from "./ArticlesTable";
 
 const SORT_OPTIONS = {
@@ -57,7 +57,8 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] }),
   ]);
 
-  const viewStatsMap = await getAdminViewStatsForArticles(articles);
+  // 管理画面は、常にログイン済み(proxyが保護している)ので、そのまま集計する
+  const viewStatsMap = articles.length > 0 ? await getArticleViewStatsMap(articles.map((article) => article.id)) : new Map();
   const rows = articles.map((article) => ({
     id: article.id,
     title: article.title,

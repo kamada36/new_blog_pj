@@ -2,8 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { contentPath } from "@/lib/slug";
 import { formatDate } from "@/lib/format";
-import { IconMug, IconBarChart } from "@/components/icons/CafeIcons";
-import type { ArticleViewStats } from "@/lib/queries";
+import { IconMug } from "@/components/icons/CafeIcons";
+import { AdminViewStats } from "@/components/admin/AdminViewStats";
 
 export type ArticleCardData = {
   id: string;
@@ -15,13 +15,7 @@ export type ArticleCardData = {
   category: { id: string; name: string; slug: string };
 };
 
-export function ArticleCard({
-  article,
-  viewStats,
-}: {
-  article: ArticleCardData;
-  viewStats?: ArticleViewStats | null;
-}) {
+export function ArticleCard({ article }: { article: ArticleCardData }) {
   return (
     <Link
       href={contentPath(article.slug)}
@@ -50,15 +44,8 @@ export function ArticleCard({
           {article.title}
         </h3>
         <time className="mt-auto pt-1 text-xs text-foreground-muted">{formatDate(article.publishedAt)}</time>
-        {viewStats && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1 text-[11px] text-foreground-muted">
-            <IconBarChart className="h-3.5 w-3.5 shrink-0 text-accent" />
-            <span>本日: {viewStats.today}</span>
-            <span>週: {viewStats.week}</span>
-            <span>月: {viewStats.month}</span>
-            <span>全体: {viewStats.total}</span>
-          </div>
-        )}
+        {/* 管理者(ブラウザ側で判定)にだけ、閲覧数が出る */}
+        <AdminViewStats articleId={article.id} />
       </div>
     </Link>
   );

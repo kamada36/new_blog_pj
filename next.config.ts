@@ -69,6 +69,10 @@ const nextConfig: NextConfig = {
     return [
       // ログイン入口は、検索エンジンに載せない
       ...(adminLoginPath ? [{ source: adminLoginPath, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }] : []),
+      // 公開ページには Cache-Tag を付ける。Cloudflare(前段のCDN)は、このタグを指定して、HTMLのキャッシュだけをまとめて削除できる
+      // (src/lib/cloudflare.ts)。管理画面・API・画像などの静的ファイル・検索は対象外(Cloudflare側のCache Rulesでも、キャッシュしない)。
+      // タグ名は src/lib/cloudflare.ts の HTML_CACHE_TAG と同じ。Cloudflareは、このヘッダーを、利用者には返さずに取り除く。
+      { source: "/((?!_next/|admin|api|search).*)", headers: [{ key: "Cache-Tag", value: "site-html" }] },
       {
         source: "/:path*",
         has: [{ type: "host", value: nonProductionHostPattern() }],
@@ -90,14 +94,20 @@ const nextConfig: NextConfig = {
       { source: "/%E3%83%AC%E3%82%B8%E3%83%AA%E3%82%A8%E3%83%B3%E3%82%B5%E3%83%BCcafe%E3%81%A8%E3%81%AF", destination: "/about/", permanent: true }, // /レジリエンサーcafeとは/
       { source: "/%E3%83%97%E3%83%A9%E3%82%A4%E3%83%90%E3%82%B7%E3%83%BC%E3%83%9D%E3%83%AA%E3%82%B7%E3%83%BC-%E5%85%8D%E8%B2%AC%E4%BA%8B%E9%A0%85", destination: "/privacy-policy/", permanent: true }, // /プライバシーポリシー-免責事項/
 
-      // ページ送り: /page/2/ → /?page=2
+      // ページ送り: トップの /page/2/ は、トップへ(トップは、ページ送りのない構成)
       { source: "/page/:n(\\d+)", destination: "/?page=:n", permanent: true },
-      { source: "/category/:slug/page/:n(\\d+)", destination: "/category/:slug/?page=:n", permanent: true },
-      { source: "/tag/:slug/page/:n(\\d+)", destination: "/tag/:slug/?page=:n", permanent: true },
+      // カテゴリー・タグの /category/x/page/2/ は、旧サイトと同じURLのまま、直接表示する(転送しない)。
+      // 以前このサイトが使っていた「?page=N」形式(2ページ目以降のみ)は、パス形式に転送する。
+      // (?page=1 や不正な値は、転送せず1ページ目を表示する。canonical で、正規のURLに統一している)
+      // 注意: Next.jsのリダイレクトは、元のクエリを転送先に引き継ぐため、転送先は /category/x/page/2/?page=2 になる
+      // (消す方法がない)。転送先のページは、canonical が正規のURL(?page=Nなし)を示すので、重複とは扱われない。
+      { source: "/category/:slug", has: [{ type: "query", key: "page", value: "(?<page>[2-9]|[1-9]\\d+)" }], destination: "/category/:slug/page/:page/", permanent: true },
+      { source: "/tag/:slug", has: [{ type: "query", key: "page", value: "(?<page>[2-9]|[1-9]\\d+)" }], destination: "/tag/:slug/page/:page/", permanent: true },
+      { source: "/archive/:year/:month", has: [{ type: "query", key: "page", value: "(?<page>[2-9]|[1-9]\\d+)" }], destination: "/archive/:year/:month/page/:page/", permanent: true },
 
       // 日付アーカイブ: /2024/06/ → /archive/2024/06/
       { source: "/:year(\\d{4})/:month(\\d{2})", destination: "/archive/:year/:month/", permanent: true },
-      { source: "/:year(\\d{4})/:month(\\d{2})/page/:n(\\d+)", destination: "/archive/:year/:month/?page=:n", permanent: true },
+      { source: "/:year(\\d{4})/:month(\\d{2})/page/:n(\\d+)", destination: "/archive/:year/:month/page/:n/", permanent: true },
 
       // HTMLサイトマップ・記事ごとのコメントフィード
       { source: "/sitemap.html", destination: "/", permanent: true },

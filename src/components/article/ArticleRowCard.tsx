@@ -2,9 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { contentPath } from "@/lib/slug";
 import { formatDate } from "@/lib/format";
-import { IconMug, IconBarChart } from "@/components/icons/CafeIcons";
+import { IconMug } from "@/components/icons/CafeIcons";
 import type { ArticleCardData } from "@/components/article/ArticleCard";
-import type { ArticleViewStats } from "@/lib/queries";
+import { AdminViewStats } from "@/components/admin/AdminViewStats";
 
 const THUMB_SIZE = {
   md: "h-[70px] w-[124px]",
@@ -14,11 +14,9 @@ const THUMB_SIZE = {
 export function ArticleRowCard({
   article,
   size = "md",
-  viewStats,
 }: {
   article: ArticleCardData;
   size?: keyof typeof THUMB_SIZE;
-  viewStats?: ArticleViewStats | null;
 }) {
   return (
     <Link href={contentPath(article.slug)} className="group flex items-center gap-3">
@@ -42,15 +40,8 @@ export function ArticleRowCard({
           {article.title}
         </p>
         <time className="text-xs text-foreground-muted">{formatDate(article.publishedAt)}</time>
-        {viewStats && (
-          <div className="flex flex-wrap items-center gap-x-1.5 text-[10px] text-foreground-muted">
-            <IconBarChart className="h-3 w-3 shrink-0 text-accent" />
-            <span>本日:{viewStats.today}</span>
-            <span>週:{viewStats.week}</span>
-            <span>月:{viewStats.month}</span>
-            <span>全体:{viewStats.total}</span>
-          </div>
-        )}
+        {/* 管理者(ブラウザ側で判定)にだけ、閲覧数が出る */}
+        <AdminViewStats articleId={article.id} variant="row" />
       </div>
     </Link>
   );

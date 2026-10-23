@@ -2,9 +2,8 @@ import { ArticleCard, type ArticleCardData } from "@/components/article/ArticleC
 import { Pagination } from "@/components/article/Pagination";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Container } from "@/components/layout/Container";
-import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
-export async function ArticleListingLayout({
+export function ArticleListingLayout({
   title,
   description,
   articles,
@@ -19,8 +18,6 @@ export async function ArticleListingLayout({
   totalPages: number;
   basePath: string;
 }) {
-  const viewStatsMap = await getAdminViewStatsForArticles(articles);
-
   return (
     <Container className="py-12">
       <header className="border-b border-border pb-5">
@@ -35,11 +32,7 @@ export async function ArticleListingLayout({
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {articles.map((article) => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  viewStats={viewStatsMap?.get(article.id) ?? null}
-                />
+                <ArticleCard key={article.id} article={article} />
               ))}
             </div>
           )}

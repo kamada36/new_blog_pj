@@ -7,7 +7,6 @@ import {
   getPrimaryAuthor,
   getSiteSetting,
 } from "@/lib/queries";
-import { getAdminViewStatsForArticles } from "@/lib/adminView";
 import { IconMug, IconCap } from "@/components/icons/CafeIcons";
 import { ArticleRowCard } from "@/components/article/ArticleRowCard";
 import { ArticleTocWidget } from "@/components/article/ArticleTocWidget";
@@ -27,7 +26,6 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
     getPrimaryAuthor(),
     getSiteSetting(),
   ]);
-  const viewStatsMap = await getAdminViewStatsForArticles(popular);
   const toc = articleToc ?? [];
   const hasStickyToc = toc.length > 0;
 
@@ -134,7 +132,6 @@ export async function Sidebar({ articleToc }: { articleToc?: TocItem[] } = {}) {
                 key={article.id}
                 article={article}
                 size="sm"
-                viewStats={viewStatsMap?.get(article.id) ?? null}
               />
             ))}
           </div>

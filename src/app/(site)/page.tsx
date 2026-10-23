@@ -15,7 +15,6 @@ import {
   getRecentArticles,
   getSiteSetting,
 } from "@/lib/queries";
-import { getAdminViewStatsForArticles } from "@/lib/adminView";
 
 
 export default async function HomePage() {
@@ -32,12 +31,6 @@ export default async function HomePage() {
     category,
     articles: latestByCategory.get(category.id) ?? [],
   }));
-
-  const viewStatsMap = await getAdminViewStatsForArticles([
-    ...recentArticles,
-    ...categorySections.flatMap((section) => section.articles),
-    ...popularArticles,
-  ]);
 
   return (
     <div className="pb-20">
@@ -74,7 +67,6 @@ export default async function HomePage() {
                     <ArticleCard
                       key={article.id}
                       article={article}
-                      viewStats={viewStatsMap?.get(article.id) ?? null}
                     />
                   ))}
                 </div>
@@ -95,7 +87,6 @@ export default async function HomePage() {
                         key={article.id}
                         article={article}
                         size="md"
-                        viewStats={viewStatsMap?.get(article.id) ?? null}
                       />
                     ))}
                   </div>
@@ -164,7 +155,6 @@ export default async function HomePage() {
                       key={article.id}
                       article={article}
                       size="md"
-                      viewStats={viewStatsMap?.get(article.id) ?? null}
                     />
                   ))}
                 </div>

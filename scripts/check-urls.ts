@@ -48,13 +48,16 @@ const PAGE_MAP: Record<string, string> = {
 const LEGACY_REDIRECTS: [string, string][] = [
   ["/sitemap.html", "/"],
   ["/page/2/", "/?page=2"],
-  ["/category/job-change/page/2/", "/category/job-change/?page=2"],
+  // 以前このサイトが使っていた「?page=N」形式 → パス形式(旧WordPressと同じ /page/N/ )。
+  // Next.jsのリダイレクトは元のクエリを引き継ぐため、転送先に ?page=2 が残る(canonicalは、?page なしの正規URL)
+  ["/category/job-change/?page=2", "/category/job-change/page/2/?page=2"],
   ["/2024/06/", "/archive/2024/06/"],
+  ["/2024/06/page/2/", "/archive/2024/06/page/2/"],
   ["/articles/what-is-ai/", "/what-is-ai/"],
   ["/what-is-ai/feed/", "/what-is-ai/"],
 ];
 
-const MUST_BE_OK = ["/", "/profile/", "/contact/", "/about/", "/privacy-policy/", "/category/job-change/", "/feed/", "/sitemap.xml", "/robots.txt", "/archive/2024/06/", "/search/?q=AI"];
+const MUST_BE_OK = ["/", "/profile/", "/contact/", "/about/", "/privacy-policy/", "/category/job-change/", "/category/job-change/page/2/", "/feed/", "/sitemap.xml", "/robots.txt", "/archive/2024/06/", "/search/?q=AI"];
 
 let failures = 0;
 const fail = (message: string) => {

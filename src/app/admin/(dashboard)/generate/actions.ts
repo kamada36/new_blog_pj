@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { purgeCloudflareHtmlAfterResponse, revalidateSite } from "@/lib/revalidateSite";
 import { loadArticleForEditor, resolveCategoryId, upsertArticleDraft } from "@/lib/ai/articleStore";
 import { generateAndStoreEyecatch } from "@/lib/ai/eyecatch";
 import { describeAiError } from "@/lib/ai/provider";
@@ -73,6 +74,7 @@ export async function saveGeneratedArticleAction(
       metaKeywords: data.tagNames.join(", "),
       coverImageUrl: data.coverImageUrl,
     });
+    purgeCloudflareHtmlAfterResponse();
     return { ok: true, id: saved.id, slug: saved.slug };
   } catch (error) {
     console.error("[generate] 記事の保存に失敗しました:", error);
@@ -115,6 +117,7 @@ export async function regenerateEyecatchAction(input: {
     const imageUrl = await generateAndStoreEyecatch(prompt);
     if (input.articleId) {
       await prisma.article.updateMany({ where: { id: input.articleId }, data: { coverImageUrl: imageUrl } });
+      revalidateSite();
     }
     return { ok: true, imageUrl };
   } catch (error) {

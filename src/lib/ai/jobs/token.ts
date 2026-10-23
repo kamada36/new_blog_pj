@@ -20,3 +20,16 @@ export function verifyJobToken(jobId: string, token: string | null | undefined):
   const given = Buffer.from(token);
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
+
+// バックグラウンド関数(Next.jsの外)から、公開ページのキャッシュの再生成を依頼するときの署名。
+// 依頼の本文(対象のパス)そのものに署名することで、署名を使い回して、別のパスを指定することができない。
+export function signRevalidateBody(rawBody: string): string {
+  return createHmac("sha256", secret()).update(`revalidate:${rawBody}`).digest("hex");
+}
+
+export function verifyRevalidateSignature(rawBody: string, signature: string | null | undefined): boolean {
+  if (!signature) return false;
+  const expected = Buffer.from(signRevalidateBody(rawBody));
+  const given = Buffer.from(signature);
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}

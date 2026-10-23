@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { getLoginPath } from "@/lib/adminPaths";
@@ -45,8 +46,8 @@ export async function updateProfile(formData: FormData) {
     data: { ...parsed.data, ...(avatarUrl ? { avatarUrl } : {}) },
   });
 
-  revalidatePath("/");
-  revalidatePath("/profile");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidateSite();
   revalidatePath("/admin/profile");
   redirectWithMessage("success", "プロフィールを更新しました。");
 }

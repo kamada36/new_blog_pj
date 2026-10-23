@@ -1,16 +1,13 @@
 import Link from "next/link";
 import { getCategories, getSiteSetting } from "@/lib/queries";
-import { getSessionUser } from "@/lib/auth";
-import { IconMug, IconDashboard } from "@/components/icons/CafeIcons";
+import { IconMug } from "@/components/icons/CafeIcons";
+import { AdminBar } from "@/components/admin/AdminBar";
 import { Container } from "@/components/layout/Container";
 import { MobileHeaderActions } from "@/components/layout/MobileHeaderActions";
 
 export async function Header() {
-  const [categories, siteSetting, sessionUser] = await Promise.all([
-    getCategories(),
-    getSiteSetting(),
-    getSessionUser(),
-  ]);
+  // ログイン状態は、ここでは調べない(調べると、ページをキャッシュできなくなる)。管理バーはブラウザ側で表示する。
+  const [categories, siteSetting] = await Promise.all([getCategories(), getSiteSetting()]);
 
   const navLinks = [
     { href: "/", label: "ホーム" },
@@ -19,17 +16,7 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-      {sessionUser && (
-        <div className="bg-neutral-900 text-neutral-100">
-          <Container className="flex h-8 items-center justify-between text-xs">
-            <Link href="/admin" className="flex items-center gap-1.5 font-medium hover:text-accent">
-              <IconDashboard className="h-3.5 w-3.5" />
-              ダッシュボードへ
-            </Link>
-            <span className="hidden text-neutral-400 sm:inline">{sessionUser.name} としてログイン中</span>
-          </Container>
-        </div>
-      )}
+      <AdminBar />
       <Container className="flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           {siteSetting.headerLogoUrl ? (
