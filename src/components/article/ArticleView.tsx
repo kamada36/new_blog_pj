@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { after } from "next/server";
 import { Container } from "@/components/layout/Container";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ArticleBody } from "@/components/article/ArticleBody";
@@ -11,15 +10,9 @@ import { ArticleAdjacentNav } from "@/components/article/ArticleAdjacentNav";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
-import {
-  getAdjacentArticles,
-  getRelatedArticles,
-  getShortcodes,
-  recordArticleView,
-} from "@/lib/queries";
-import { getAdminViewStatsForArticles } from "@/lib/adminView";
-import { getSessionUser } from "@/lib/auth";
-import { getViewRequestContext } from "@/lib/analytics";
+import { getAdjacentArticles, getRelatedArticles, getShortcodes } from "@/lib/queries";
+import { loadImageSizes } from "@/lib/imageSize";
+import { ViewBeacon } from "@/components/article/ViewBeacon";
 
 import { contentPath } from "@/lib/slug";
 import { ArticleJsonLd } from "./ArticleJsonLd";
@@ -31,29 +24,21 @@ type PublishedArticle = NonNullable<Awaited<ReturnType<typeof getArticleBySlug>>
 
 /** 公開記事の表示。サイト直下の /{slug}/ から呼ばれる(現行WordPressのURLと同じ形)。 */
 export async function ArticleView({ article }: { article: PublishedArticle }) {
-
-  // 管理者自身の閲覧、bot/クローラー、短時間の重複アクセスはカウントしない
-  const sessionUser = await getSessionUser();
-  if (!sessionUser) {
-    const { isBot, visitorHash } = await getViewRequestContext();
-    if (!isBot) {
-      after(() => recordArticleView(article.id, visitorHash));
-    }
-  }
-
   const toc = extractHeadings(article.contentMarkdown);
   // 互いに依存しない問い合わせは同時に走らせる(順番に待つと、DBまでの往復の遅延が積み重なる)
-  const [related, { prev, next }, shortcodes] = await Promise.all([
+  const [related, { prev, next }, shortcodes, imageSizes] = await Promise.all([
     getRelatedArticles(article, 4),
     getAdjacentArticles(article),
     getShortcodes(),
+    loadImageSizes(article.contentMarkdown),
   ]);
-  const relatedViewStatsMap = await getAdminViewStatsForArticles(related);
   const articleUrl = `${siteUrl}${contentPath(article.slug)}`;
 
   return (
     <Container className="py-10">
       <ArticleJsonLd article={article} url={articleUrl} siteUrl={siteUrl} />
+      {/* 閲覧の記録は、表示したブラウザから送る(このページはキャッシュされ、サーバー側では記録できない) */}
+      <ViewBeacon articleId={article.id} />
       <nav className="flex flex-wrap items-center gap-1 text-xs text-foreground-muted" aria-label="パンくずリスト">
         <Link href="/" className="hover:text-accent-dark">
           ホーム
@@ -96,7 +81,7 @@ export async function ArticleView({ article }: { article: PublishedArticle }) {
           )}
 
           <div className="mt-8">
-            <ArticleBody markdown={article.contentMarkdown} shortcodes={shortcodes} />
+            <ArticleBody markdown={article.contentMarkdown} shortcodes={shortcodes} imageSizes={imageSizes} />
           </div>
 
           {article.tags.length > 0 && (
@@ -143,11 +128,7 @@ export async function ArticleView({ article }: { article: PublishedArticle }) {
               <h2 className="border-b border-border pb-3 font-display text-lg font-black">関連記事</h2>
               <div className="mt-6 grid grid-cols-2 gap-4">
                 {related.map((item) => (
-                  <ArticleCard
-                    key={item.id}
-                    article={item}
-                    viewStats={relatedViewStatsMap?.get(item.id) ?? null}
-                  />
+                  <ArticleCard key={item.id} article={item} />
                 ))}
               </div>
             </div>

@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
-import { Zen_Kaku_Gothic_New, Noto_Sans_JP, Dancing_Script } from "next/font/google";
+import { Noto_Sans_JP, Dancing_Script } from "next/font/google";
 import { getSiteSetting } from "@/lib/queries";
 import "./globals.css";
 
-// 日本語フォントは字形ごとに多数のファイルへ分割されている。preload を有効のままにすると、使わない分まで
-// 約50本をすべて先読みしてしまうため無効にする(必要な字形だけ、CSSの unicode-range に従って読み込まれる)。
+// 日本語フォントは字形ごとに多数のファイルへ分割されている。ページが使う文字の分だけ、何十個も読み込まれるため、
+// フォントの種類と太さを増やすほど、転送量(と表示の遅さ)が増える。
+//   - 本文と見出しは、同じ Noto Sans JP 1種類にする。Googleは、太さが違っても、可変フォントの同じファイルを返すため、
+//     太さを増やしても、読み込むファイルは増えない(ビルド後に、太さ違いで同じファイルを参照することを確認済み)。
+//     以前は、見出し用に Zen Kaku Gothic New を別に読み込んでいて、約40ファイル・約0.6MBが余分にかかっていた。
+//   - 太さを指定せずに可変フォントとして読み込むと、Next.jsの取得処理が失敗するため、使う太さを指定する。
+//     900は見出し(font-black)、700は太字と見出し、500・400は本文。
+//   - preload は無効にする(使わない分まで、約50本をすべて先読みしてしまうため)。
 const bodyFont = Noto_Sans_JP({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  preload: false,
-});
-
-const displayFont = Zen_Kaku_Gothic_New({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "700", "900"],
+  weight: ["400", "500", "700", "900"],
   preload: false,
 });
 
@@ -49,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ja"
-      className={`${bodyFont.variable} ${displayFont.variable} ${brandFont.variable} h-full antialiased`}
+      className={`${bodyFont.variable} ${brandFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>

@@ -2,6 +2,7 @@
 
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { purgeCloudflareHtmlAfterResponse } from "@/lib/revalidateSite";
 import { finalizeRewrite, logRewrite, revertRewrite } from "@/lib/ai/articleStore";
 import {
   getLinkIndexStatus,
@@ -24,6 +25,7 @@ export async function revertRewriteAction(articleId: string): Promise<ActionResu
     const article = await revertRewrite(articleId);
     if (!article) return { ok: false, error: "元に戻せるリライト内容が見つかりませんでした。" };
     await logRewrite({ articleId, articleTitle: article.title, articleSlug: article.slug, status: "reverted" });
+    purgeCloudflareHtmlAfterResponse();
     return { ok: true };
   } catch (error) {
     console.error("[rewrite] 元に戻す処理に失敗しました:", error);
@@ -36,6 +38,7 @@ export async function finalizeRewriteAction(articleId: string): Promise<ActionRe
   if (!(await getSessionUser())) return { ok: false, error: SESSION_EXPIRED };
   try {
     await finalizeRewrite(articleId);
+    purgeCloudflareHtmlAfterResponse();
     return { ok: true };
   } catch (error) {
     console.error("[rewrite] 確定処理に失敗しました:", error);

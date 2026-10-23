@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
 import { resolveImageField } from "@/lib/uploadField";
 
@@ -50,7 +51,7 @@ export async function createShortcode(formData: FormData) {
 
   await prisma.shortcode.create({ data: { ...parsed.data, iconUrl } });
   revalidatePath("/admin/shortcodes");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }
 
 export async function updateShortcode(id: string, formData: FormData) {
@@ -73,11 +74,11 @@ export async function updateShortcode(id: string, formData: FormData) {
     data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) },
   });
   revalidatePath("/admin/shortcodes");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }
 
 export async function deleteShortcode(id: string) {
   await prisma.shortcode.delete({ where: { id } });
   revalidatePath("/admin/shortcodes");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }

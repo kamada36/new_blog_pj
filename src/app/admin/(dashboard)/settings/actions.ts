@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
 import { resolveImageField } from "@/lib/uploadField";
 
@@ -30,7 +30,7 @@ export async function updateSiteSetting(formData: FormData) {
     create: { id: "singleton", ...parsed.data },
   });
 
-  revalidatePath("/", "layout");
+  revalidateSite();
   redirect("/admin/settings?status=success");
 }
 
@@ -58,7 +58,7 @@ export async function updateSponsorSlots(formData: FormData) {
     create: { id: "singleton", ...parsed.data },
   });
 
-  revalidatePath("/", "layout");
+  revalidateSite();
   redirect("/admin/settings?status=success");
 }
 
@@ -84,7 +84,7 @@ export async function updateBranding(formData: FormData) {
     create: { id: "singleton", ...data },
   });
 
-  revalidatePath("/", "layout");
+  revalidateSite();
   redirect("/admin/settings?status=success");
 }
 
@@ -117,7 +117,7 @@ export async function updateResident(formData: FormData) {
     create: { id: "singleton", ...data },
   });
 
-  revalidatePath("/", "layout");
+  revalidateSite();
   redirect("/admin/settings?status=success");
 }
 
@@ -148,6 +148,6 @@ export async function updateHeroAssets(formData: FormData) {
     create: { id: "singleton", ...data },
   });
 
-  revalidatePath("/", "layout");
+  revalidateSite();
   redirect("/admin/settings?status=success");
 }

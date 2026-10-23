@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 import { resolveImageField } from "@/lib/uploadField";
@@ -32,7 +33,8 @@ export async function createCategory(formData: FormData) {
   }
   const iconUrl = await resolveImageField(formData, "icon", "categories", "setting");
   await prisma.category.create({ data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) } });
-  revalidatePath("/");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidateSite();
   revalidatePath("/admin/categories");
 }
 
@@ -50,7 +52,8 @@ export async function updateCategory(id: string, formData: FormData) {
   }
   const iconUrl = await resolveImageField(formData, "icon", "categories", "setting");
   await prisma.category.update({ where: { id }, data: { ...parsed.data, ...(iconUrl ? { iconUrl } : {}) } });
-  revalidatePath("/");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidateSite();
   revalidatePath("/admin/categories");
 }
 
@@ -61,6 +64,7 @@ export async function deleteCategory(id: string) {
     return;
   }
   await prisma.category.delete({ where: { id } });
-  revalidatePath("/");
+  // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
+  revalidateSite();
   revalidatePath("/admin/categories");
 }

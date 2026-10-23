@@ -17,6 +17,15 @@ export function getClientIp(headerList: Awaited<ReturnType<typeof headers>>): st
   // - それ以外(自前のnginx等): x-forwarded-for は手前のプロキシが値を後ろに追記していく形式
   //   のため、先頭(左端)はクライアントが自由に偽装できる。信頼できるのは自分のプロキシが
   //   最後に追記した値(右端)、もしくはプロキシが設定するx-real-ipのみ。
+  // - Cloudflare(前段のCDN)経由: Netlifyから見える接続元はCloudflareのIPになるため、訪問者のIPは cf-connecting-ip に入る。
+  //   ただしこのヘッダーは、Netlifyのアドレスへ直接アクセスした人が偽装できる。そこでCloudflareの変換ルールが
+  //   付ける秘密のヘッダー(x-cf-origin-secret)が、環境変数 CF_ORIGIN_SECRET と一致するときだけ信用する。
+  const originSecret = process.env.CF_ORIGIN_SECRET;
+  if (originSecret && headerList.get("x-cf-origin-secret") === originSecret) {
+    const cfIp = headerList.get("cf-connecting-ip");
+    if (cfIp) return cfIp.trim();
+  }
+
   const vercelIp = headerList.get("x-vercel-forwarded-for");
   if (vercelIp) return vercelIp.split(",")[0]?.trim() ?? "";
 
@@ -35,12 +44,17 @@ export function getClientIp(headerList: Awaited<ReturnType<typeof headers>>): st
   return lastForwardedIp ?? "";
 }
 
+/** User-Agentが、ボット・クローラー・コマンドラインツール等(または空)か。 */
+export function isBotUserAgent(userAgent: string): boolean {
+  return userAgent === "" || BOT_UA_PATTERN.test(userAgent);
+}
+
 export async function getViewRequestContext() {
   const headerList = await headers();
   const userAgent = headerList.get("user-agent") ?? "";
   const ip = getClientIp(headerList);
 
-  const isBot = userAgent === "" || BOT_UA_PATTERN.test(userAgent);
+  const isBot = isBotUserAgent(userAgent);
 
   // 生のIPは保存せず、UAと合わせて一方向ハッシュ化した「訪問者識別子」だけを使う。
   const salt = process.env.AUTH_SECRET ?? "";

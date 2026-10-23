@@ -38,7 +38,7 @@ export async function triggerBackgroundFunction(jobId: string, origin: string): 
   const response = await fetch(`${origin}/.netlify/functions/ai-job-background`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-ai-job-token": createJobToken(jobId) },
-    body: JSON.stringify({ jobId }),
+    body: JSON.stringify({ jobId, origin }),
   });
   if (!response.ok) {
     throw new Error(`バックグラウンド関数を起動できませんでした(HTTP ${response.status})。`);

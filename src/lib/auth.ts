@@ -3,6 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
+import { ADMIN_FLAG_COOKIE, ADMIN_FLAG_MAX_AGE_SECONDS } from "@/lib/adminFlag";
 
 const SESSION_COOKIE = "rc_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -36,11 +37,20 @@ export async function createSession(user: { id: string; email: string }) {
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
+  // 公開ページ(ブラウザ側)が、管理者向けの表示を取りに行くかを判断するための目印。httpOnlyにしない(JSから読む)。
+  cookieStore.set(ADMIN_FLAG_COOKIE, "1", {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_FLAG_MAX_AGE_SECONDS,
+  });
 }
 
 export async function destroySession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(ADMIN_FLAG_COOKIE);
 }
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
