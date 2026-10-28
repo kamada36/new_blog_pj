@@ -17,19 +17,44 @@ export function SponsorEmbed({ html }: { html: string }) {
     const container = containerRef.current;
     if (!container) return;
 
-    container.innerHTML = html;
+    let injected = false;
+    const inject = () => {
+      if (injected) return;
+      injected = true;
+      container.innerHTML = html;
 
-    const scripts = Array.from(container.querySelectorAll("script"));
-    for (const oldScript of scripts) {
-      const newScript = document.createElement("script");
-      for (const attr of Array.from(oldScript.attributes)) {
-        newScript.setAttribute(attr.name, attr.value);
+      const scripts = Array.from(container.querySelectorAll("script"));
+      for (const oldScript of scripts) {
+        const newScript = document.createElement("script");
+        for (const attr of Array.from(oldScript.attributes)) {
+          newScript.setAttribute(attr.name, attr.value);
+        }
+        newScript.text = oldScript.text;
+        oldScript.replaceWith(newScript);
       }
-      newScript.text = oldScript.text;
-      oldScript.replaceWith(newScript);
+    };
+
+    // 広告の読み込み(画像やスクリプトで数百KB)は、画面の近くまでスクロールされてから始める。
+    // 最初の表示を重くしないためで、広告素材そのものには手を加えない。余裕(600px)を持たせるので、
+    // 見える前に差し込まれ、読み込みで表示がずれることもない。IntersectionObserverが無い古い環境では、すぐに差し込む。
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver === "undefined") {
+      inject();
+    } else {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            observer?.disconnect();
+            inject();
+          }
+        },
+        { rootMargin: "600px 0px" }
+      );
+      observer.observe(container);
     }
 
     return () => {
+      observer?.disconnect();
       container.innerHTML = "";
     };
   }, [html]);

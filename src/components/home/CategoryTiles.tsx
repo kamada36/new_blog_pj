@@ -26,7 +26,7 @@ export function CategoryTiles({
           >
             {category.iconUrl ? (
               <span className="relative h-14 w-14 shrink-0">
-                <Image src={category.iconUrl} alt="" fill className="object-contain" unoptimized />
+                <Image src={category.iconUrl} alt="" fill sizes="56px" className="object-contain" />
               </span>
             ) : (
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-dark transition-colors group-hover:bg-accent group-hover:text-accent-contrast">
