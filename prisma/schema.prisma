@@ -227,6 +227,10 @@ model ContactMessage {
   message   String
   createdAt DateTime  @default(now())
   readAt    DateTime?
+  /// 送信元IPのハッシュ(IP+AUTH_SECRET)。同じ送信元からの連投を制限するために使う。生のIPは保存しない。
+  ipHash    String?
+
+  @@index([ipHash, createdAt])
 }
 
 // AI生成・リライトのバックグラウンド実行。Netlifyの通常の関数は60秒で打ち切られるため、長い処理は

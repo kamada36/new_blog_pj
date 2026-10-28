@@ -1,12 +1,27 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { submitContact, type ContactFormState } from "./actions";
 
 const initialState: ContactFormState = { status: "idle" };
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState(submitContact, initialState);
+  // 送信用トークン。ページはCDNにキャッシュされるため埋め込まず、表示後に取得する(サーバー側で検証。src/lib/contactGuard.ts)。
+  const [token, setToken] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/contact-token/",{ cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { token?: unknown } | null) => {
+        if (!cancelled && typeof data?.token === "string") setToken(data.token);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (state.status === "success") {
     return (
@@ -27,6 +42,7 @@ export function ContactForm() {
           <input name="bot-field" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
+      <input type="hidden" name="form-token" value={token} />
       <div>
         <label htmlFor="name" className="text-sm font-semibold">
           お名前
