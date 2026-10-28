@@ -383,7 +383,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps<"/a
                       <td
                         key={matrix.keys[i]}
                         className="border-b border-border px-1.5 py-1.5 text-center"
-                        style={n > 0 ? { backgroundColor: `color-mix(in srgb, var(--accent) ${Math.round(18 + (72 * n) / matrix.max)}%, white)` } : undefined}
+                        // 背景は、ダークモードでも白に混ぜた明るい色になる。文字色をテーマに任せると、ダークモードでは白系になって読めないため、黒系に固定する。
+                        style={n > 0 ? { backgroundColor: `color-mix(in srgb, var(--accent) ${Math.round(18 + (72 * n) / matrix.max)}%, white)`, color: "#111827" } : undefined}
                       >
                         {n > 0 ? n : <span className="text-border">·</span>}
                       </td>
