@@ -12,6 +12,8 @@
   --accent-dark: #99631f;
   --accent-soft: #f5e1cc;
   --accent-contrast: #fffafa;
+  /* 端末の標準の日本語フォント(Webフォントを読み込まない)。iPhone/Mac=ヒラギノ、Android=Noto Sans CJK、Windows=游ゴシック/メイリオ */
+  --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", YuGothic, Meiryo, sans-serif;
 }
 
 @theme inline {

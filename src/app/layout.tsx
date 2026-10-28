@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { Noto_Sans_JP, Dancing_Script } from "next/font/google";
+import { Dancing_Script } from "next/font/google";
 import { getSiteSetting } from "@/lib/queries";
 import "./globals.css";
 
-// 日本語フォントは字形ごとに多数のファイルへ分割されている。ページが使う文字の分だけ、何十個も読み込まれるため、
-// フォントの種類と太さを増やすほど、転送量(と表示の遅さ)が増える。
-//   - 本文と見出しは、同じ Noto Sans JP 1種類にする。Googleは、太さが違っても、可変フォントの同じファイルを返すため、
-//     太さを増やしても、読み込むファイルは増えない(ビルド後に、太さ違いで同じファイルを参照することを確認済み)。
-//     以前は、見出し用に Zen Kaku Gothic New を別に読み込んでいて、約40ファイル・約0.6MBが余分にかかっていた。
-//   - 太さを指定せずに可変フォントとして読み込むと、Next.jsの取得処理が失敗するため、使う太さを指定する。
-//     900は見出し(font-black)、700は太字と見出し、500・400は本文。
-//   - preload は無効にする(使わない分まで、約50本をすべて先読みしてしまうため)。
-const bodyFont = Noto_Sans_JP({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "900"],
-  preload: false,
-});
+// 日本語のWebフォント(Noto Sans JPなど)は、字形ごとに数十〜百以上のファイルへ分割されていて、ページが使う文字の分だけ
+// 30〜40ファイル・700〜900KBを読み込む。さらに、その定義だけで約120KBのCSSになり、表示をブロックする。
+// モバイル回線では、これが表示の遅れの最大の原因だったため、本文・見出しとも、閲覧する端末の標準の日本語フォントを使う
+// (フォントの指定は globals.css の --font-body)。筆記体のロゴ文字(Dancing Script)は、英字だけで軽いので、そのまま読み込む。
 
 // トップページのサイト名(Resilient-cer cafe)に使う筆記体
 const brandFont = Dancing_Script({
@@ -48,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ja"
-      className={`${bodyFont.variable} ${brandFont.variable} h-full antialiased`}
+      className={`${brandFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>

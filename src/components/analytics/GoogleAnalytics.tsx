@@ -18,7 +18,7 @@ function productionHosts(): string[] {
  * GA4を読み込む。ただし本番ドメインで開かれたときだけ計測を始める
  * (切り替え前の仮のデプロイ先・プレビュー・ローカル開発のアクセスで、本番の数値を汚さないため)。
  * ホストの判定はブラウザ側で行う。サイト側のページ(/admin 以外)のレイアウトにだけ置くので、管理画面は計測しない。
- * ページ遷移(クライアント側のルーティング)は、GA4の拡張計測が履歴の変更を検知して page_view を送る。
+ * 計測用スクリプトの読み込みは遅らせる(下記)。ページ遷移(クライアント側のルーティング)は、GA4の拡張計測が履歴の変更を検知して page_view を送る。
  */
 export function GoogleAnalytics() {
   const hosts = productionHosts();
@@ -28,14 +28,28 @@ export function GoogleAnalytics() {
     <Script id="google-analytics" strategy="afterInteractive">
       {`(function () {
   if (${JSON.stringify(hosts)}.indexOf(location.hostname) === -1) return;
-  var s = document.createElement("script");
-  s.async = true;
-  s.src = "https://www.googletagmanager.com/gtag/js?id=${GA_ID}";
-  document.head.appendChild(s);
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }
   gtag("js", new Date());
   gtag("config", ${JSON.stringify(GA_ID)});
+  // 計測用のスクリプト(約190KB)は、表示を妨げないよう、読み込みを遅らせる。最初の操作(スクロール・タップ・キー入力)、
+  // または、ページの読み込み完了から5秒後の、どちらか早い方で読み込む。上の gtag() の呼び出しは、読み込み前でも
+  // dataLayer に溜まり、読み込み後にまとめて送られる。
+  var started = false;
+  var events = ["pointerdown", "keydown", "scroll", "touchstart"];
+  function start() {
+    if (started) return;
+    started = true;
+    events.forEach(function (name) { window.removeEventListener(name, start); });
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=${GA_ID}";
+    document.head.appendChild(s);
+  }
+  events.forEach(function (name) { window.addEventListener(name, start, { passive: true }); });
+  function afterLoad() { setTimeout(start, 5000); }
+  if (document.readyState === "complete") afterLoad();
+  else window.addEventListener("load", afterLoad);
 })();`}
     </Script>
   );
