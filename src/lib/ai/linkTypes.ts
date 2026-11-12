@@ -19,11 +19,11 @@ export interface LinkIndexStatus {
 }
 
 /** 内部リンクの挿入形式 */
-export const INTERNAL_LINK_FORMATS = ["callout", "text"] as const;
+export const INTERNAL_LINK_FORMATS = ["card", "text"] as const;
 export type InternalLinkFormat = (typeof INTERNAL_LINK_FORMATS)[number];
 
 export const INTERNAL_LINK_FORMAT_LABELS: Record<InternalLinkFormat, string> = {
-  callout: "「あわせて読みたい」の囲み",
+  card: "ブログカード(アイキャッチ画像つき)",
   text: "文中のテキストリンク",
 };
 

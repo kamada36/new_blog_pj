@@ -59,7 +59,7 @@ export const rewriteRequestSchema = z.object({
   instruction: z.string().trim().max(5000).optional(),
   /** 内部リンクとして挿入する自サイト記事のID(URLはサーバー側でDBから引く) */
   internalLinkArticleIds: z.array(z.string().max(100)).max(5).default([]),
-  internalLinkFormat: z.enum(INTERNAL_LINK_FORMATS).default("callout"),
+  internalLinkFormat: z.enum(INTERNAL_LINK_FORMATS).default("card"),
   publishStatus: z.enum(["keep", "draft", "published"]).default("keep"),
   insertUpdatedNote: z.boolean().default(true),
 });
