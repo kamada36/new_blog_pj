@@ -748,6 +748,67 @@ body {
   margin: 0;
 }
 
+/* 内部記事へのブログカード(ArticleBody の LinkCard)。.article-body a の下線・色を打ち消す */
+.article-body a.article-linkcard {
+  display: flex;
+  align-items: stretch;
+  margin: 1.4em 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75em;
+  background: var(--surface);
+  color: var(--foreground);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.article-body a.article-linkcard:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.article-linkcard-thumb {
+  position: relative;
+  display: flex;
+  flex: 0 0 112px;
+  align-items: center;
+  justify-content: center;
+  min-height: 84px;
+  background: var(--surface-muted);
+}
+
+.article-linkcard-body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3em;
+  padding: 0.7em 1em;
+}
+
+.article-linkcard-label {
+  color: var(--accent-dark);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.article-linkcard-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 700;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@media (min-width: 640px) {
+  .article-linkcard-thumb {
+    flex-basis: 200px;
+    min-height: 112px;
+  }
+}
+
 .article-balloon {
   display: flex;
   align-items: flex-start;

@@ -23,16 +23,16 @@ function formatRules(format: InternalLinkFormat): string {
       "- 例: 〇〇の詳しい手順は、[記事タイトル](URL)で解説しています。",
     ].join("\n");
   }
+  // サイトが「リンクだけの段落」を、アイキャッチ画像つきのブログカードに変換して表示する(src/lib/linkCards.ts)。
+  // そのため、リンクの行には他の文字・記号(「>」「-」「**」など)を付けず、前後を空行にする。
   return [
-    "- 各リンクは「案内文の段落」→「あわせて読みたいの囲み」の順で挿入する。案内文は文脈に合わせて自然に書く(例: 「〇〇の詳細については、こちらの記事で解説しています。」)。",
-    "- 囲みは次の形式を一字一句そのまま使う(「>」の囲みの中に、太字の見出しと、記事タイトルをアンカーテキストにしたリンクを置く。前後は空行):",
-    "  > **☕ あわせて読みたい**",
-    "  >",
-    "  > [記事タイトル](URL)",
+    "- 各リンクは「案内文の段落」→「リンクだけの行」の順で挿入する。案内文は文脈に合わせて自然に書く(例: 「〇〇の詳細については、こちらの記事で解説しています。」)。",
+    "- リンクの行は次の形式を一字一句そのまま使う。サイトが自動でアイキャッチ画像つきのブログカードとして表示するため、前後は空行にし、この行には他の文字・記号(「>」の囲み、箇条書きの「-」、太字、見出し、絵文字など)を一切付けないこと:",
+    "  [記事タイトル](URL)",
   ].join("\n");
 }
 
-export function buildInternalLinkSection(links: InternalLinkRequest[], format: InternalLinkFormat = "callout"): string {
+export function buildInternalLinkSection(links: InternalLinkRequest[], format: InternalLinkFormat = "card"): string {
   if (links.length === 0) return "";
   const list = links
     .map((link, i) => {

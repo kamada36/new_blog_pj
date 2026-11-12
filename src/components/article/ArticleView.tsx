@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
 import { getAdjacentArticles, getRelatedArticles, getShortcodes } from "@/lib/queries";
 import { loadImageSizes } from "@/lib/imageSize";
+import { loadLinkCards } from "@/lib/linkCards";
 import { ViewBeacon } from "@/components/article/ViewBeacon";
 
 import { contentPath } from "@/lib/slug";
@@ -26,11 +27,12 @@ type PublishedArticle = NonNullable<Awaited<ReturnType<typeof getArticleBySlug>>
 export async function ArticleView({ article }: { article: PublishedArticle }) {
   const toc = extractHeadings(article.contentMarkdown);
   // 互いに依存しない問い合わせは同時に走らせる(順番に待つと、DBまでの往復の遅延が積み重なる)
-  const [related, { prev, next }, shortcodes, imageSizes] = await Promise.all([
+  const [related, { prev, next }, shortcodes, imageSizes, linkCards] = await Promise.all([
     getRelatedArticles(article, 4),
     getAdjacentArticles(article),
     getShortcodes(),
     loadImageSizes(article.contentMarkdown),
+    loadLinkCards(article.contentMarkdown),
   ]);
   const articleUrl = `${siteUrl}${contentPath(article.slug)}`;
 
@@ -81,7 +83,7 @@ export async function ArticleView({ article }: { article: PublishedArticle }) {
           )}
 
           <div className="mt-8">
-            <ArticleBody markdown={article.contentMarkdown} shortcodes={shortcodes} imageSizes={imageSizes} />
+            <ArticleBody markdown={article.contentMarkdown} shortcodes={shortcodes} imageSizes={imageSizes} linkCards={linkCards} />
           </div>
 
           {article.tags.length > 0 && (

@@ -80,7 +80,7 @@ export function RewriteWorkbench({
   const [insertUpdatedNote, setInsertUpdatedNote] = useState(true);
   const [instructions, setInstructions] = useState<Record<string, string>>({});
   const [links, setLinks] = useState<Record<string, LinkCandidate[]>>({});
-  const [linkFormat, setLinkFormat] = useState<InternalLinkFormat>("callout");
+  const [linkFormat, setLinkFormat] = useState<InternalLinkFormat>("card");
   // 画面で探し直した候補(サーバーから再取得されるまでの表示用)
   const [foundSuggestions, setFoundSuggestions] = useState<Record<string, LinkSuggestionView[]>>({});
   const [findingIds, setFindingIds] = useState<Set<string>>(new Set());
