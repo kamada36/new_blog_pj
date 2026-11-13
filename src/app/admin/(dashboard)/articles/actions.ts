@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
+import { syncArticleAffiliateLinksSafely } from "@/lib/affiliateStore";
 import { getSessionUser } from "@/lib/auth";
 import { resolveImageField } from "@/lib/uploadField";
 import { isReservedSlug, slugify } from "@/lib/slug";
@@ -99,16 +100,20 @@ export async function saveArticle(_prevState: ArticleFormState, formData: FormDa
   };
   const tagRefs = data.tagIds.map((id) => ({ id }));
 
-  if (existing) {
-    await prisma.article.update({
-      where: { id: existing.id },
-      data: { ...payload, tags: { set: tagRefs } },
-    });
-  } else {
-    await prisma.article.create({
-      data: { ...payload, authorId: author.id, tags: { connect: tagRefs } },
-    });
-  }
+  const saved = existing
+    ? await prisma.article.update({
+        where: { id: existing.id },
+        data: { ...payload, tags: { set: tagRefs } },
+        select: { id: true },
+      })
+    : await prisma.article.create({
+        data: { ...payload, authorId: author.id, tags: { connect: tagRefs } },
+        select: { id: true },
+      });
+
+  // 本文のアフィリエイトリンクの有無・内訳を、管理画面(アフィリエイト管理)用に更新する
+  await syncArticleAffiliateLinksSafely(prisma, saved.id, data.contentMarkdown);
+  revalidatePath("/admin/affiliates");
 
   // 公開ページはキャッシュ(ISR)されている。ヘッダー・サイドバー・一覧など全ページに出る内容が変わるため、サイト全体を更新する。
   revalidateSite();

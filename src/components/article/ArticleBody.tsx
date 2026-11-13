@@ -8,6 +8,8 @@ import rehypeHighlight from "rehype-highlight";
 import type { Components } from "react-markdown";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { BALLOON_ICON_ALT_PREFIX, expandShortcodes, type ShortcodePreset } from "@/lib/shortcodes";
+import { hasMyLinkBox, parseMyLinkBoxId } from "@/lib/myLinkBox";
+import { MyLinkBoxLoader } from "./MyLinkBoxLoader";
 
 type ImgProps = { src?: string; alt?: string };
 
@@ -127,21 +129,30 @@ export function ArticleBody({
         return <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} />;
       },
     }),
-    ...(linkCards && {
-      p({ children }) {
-        // 段落の中身がリンク1つだけで、それが記事のカード情報を持つなら、カードに置き換える
-        const [only, ...others] = significantChildren(children);
+    p({ children }) {
+      const parts = significantChildren(children);
+
+      // [vc-mylinkbox id="..."] だけの段落は、バリューコマースの商品リンクの置き場所にする(中身は mylinkbox.js が差し込む)
+      if (parts.length > 0 && parts.every((part) => typeof part === "string")) {
+        const widgetId = parseMyLinkBoxId(parts.join(""));
+        if (widgetId) return <div className="article-mylinkbox" data-vc_mylinkbox_id={widgetId} />;
+      }
+
+      // 段落の中身がリンク1つだけで、それが記事のカード情報を持つなら、カードに置き換える
+      if (linkCards) {
+        const [only, ...others] = parts;
         if (only && others.length === 0 && isValidElement(only)) {
           const href = (only.props as { href?: unknown }).href;
           const card = typeof href === "string" ? linkCards[href] : undefined;
           if (card) return <LinkCard href={href as string} card={card} />;
         }
-        return <p>{children}</p>;
-      },
-    }),
+      }
+      return <p>{children}</p>;
+    },
   };
   return (
     <div className="article-body">
+      {hasMyLinkBox(markdown) && <MyLinkBoxLoader />}
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSlug, rehypeHighlight]}
