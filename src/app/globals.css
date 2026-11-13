@@ -504,6 +504,28 @@ body {
   }
 }
 
+/* --- 記事ページの広告表記 (src/components/article/ArticleAdDisclosure.tsx) ---
+   トップページの帯(.hero-disclaimer)と同じエスプレッソ色・キャラメル色の文字。記事の幅に収まる角丸の小さな帯にして、
+   「PR」の札だけ枠線にすることで、帯全体は控えめなまま広告表記だと一目で分かるようにする。 */
+.article-ad-disclosure {
+  --disclaimer-bottom: #3f2a1e;
+  --disclaimer-line: rgba(241, 214, 176, 0.35);
+  --disclaimer-text: #f1cf9f;
+  background: var(--disclaimer-bottom);
+  border: 1px solid var(--disclaimer-line);
+  color: var(--disclaimer-text);
+}
+
+.article-ad-disclosure-badge {
+  border: 1px solid var(--disclaimer-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .article-ad-disclosure {
+    --disclaimer-bottom: #2c1e15;
+  }
+}
+
 /* --- コーヒーの一滴と波紋 (src/components/home/CoffeeDrop.tsx) ---
    .coffee-drop の位置が着水点。落下 0.55s → 着水と同時に小さな跳ね返りと3重の波紋。 */
 .coffee-drop {

@@ -7,6 +7,7 @@ import { TableOfContents } from "@/components/article/TableOfContents";
 import { ShareButtons } from "@/components/article/ShareButtons";
 import { ArticleCard } from "@/components/article/ArticleCard";
 import { ArticleAdjacentNav } from "@/components/article/ArticleAdjacentNav";
+import { ArticleAdDisclosure } from "@/components/article/ArticleAdDisclosure";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { formatDate } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
@@ -75,6 +76,8 @@ export async function ArticleView({ article }: { article: PublishedArticle }) {
               </div>
             )}
           </div>
+
+          <ArticleAdDisclosure />
 
           {toc.length > 0 && (
             <div className="mt-8">
