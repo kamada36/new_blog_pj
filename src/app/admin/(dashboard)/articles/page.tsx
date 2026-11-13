@@ -27,6 +27,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
   const q = getParam("q").trim();
   const categoryId = getParam("categoryId");
   const status = getParam("status");
+  const affiliate = getParam("affiliate");
   const publishedFrom = getParam("publishedFrom");
   const publishedTo = getParam("publishedTo");
   const sortParam = getParam("sort");
@@ -45,6 +46,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
     ...(categoryId ? { categoryId } : {}),
     ...(status ? { status } : {}),
+    ...(affiliate === "has" || affiliate === "none" ? { affiliateStatus: affiliate } : {}),
     ...(hasPublishedAtFilter ? { publishedAt: publishedAtFilter } : {}),
   };
 
@@ -52,7 +54,10 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     prisma.article.findMany({
       where,
       orderBy: SORT_OPTIONS[sort].orderBy,
-      include: { category: true },
+      include: {
+        category: true,
+        affiliateLinks: { select: { program: { select: { name: true } } } },
+      },
     }),
     prisma.category.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }] }),
   ]);
@@ -69,10 +74,11 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
     updatedAt: article.updatedAt,
     coverImageUrl: article.coverImageUrl,
     category: article.category,
+    affiliateServices: [...new Set(article.affiliateLinks.map((link) => link.program.name))],
     viewStats: viewStatsMap?.get(article.id) ?? null,
   }));
 
-  const hasFilters = Boolean(q || categoryId || status || publishedFrom || publishedTo || sortParam);
+  const hasFilters = Boolean(q || categoryId || status || affiliate || publishedFrom || publishedTo || sortParam);
 
   return (
     <div>
@@ -126,6 +132,18 @@ export default async function AdminArticlesPage({ searchParams }: PageProps<"/ad
             <option value="published">公開中</option>
             <option value="draft">下書き</option>
             <option value="private">非公開</option>
+          </select>
+        </div>
+        <div className="min-w-[120px]">
+          <label className="text-xs font-semibold text-foreground-muted">アフィリエイト</label>
+          <select
+            name="affiliate"
+            defaultValue={affiliate}
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          >
+            <option value="">すべて</option>
+            <option value="has">リンクあり</option>
+            <option value="none">リンクなし</option>
           </select>
         </div>
         <div className="min-w-[130px]">

@@ -26,6 +26,8 @@ type ArticleRow = {
   updatedAt: Date;
   coverImageUrl: string | null;
   category: { name: string };
+  /** 本文で紹介しているアフィリエイトのサービス名(リンクなしなら空) */
+  affiliateServices: string[];
   viewStats: ArticleViewStats | null;
 };
 
@@ -163,6 +165,19 @@ export function ArticlesTable({ articles }: { articles: ArticleRow[] }) {
                   <span className="block text-xs font-normal text-foreground-muted">
                     本文: {article.contentLength}
                   </span>
+                  {article.affiliateServices.length > 0 && (
+                    <Link
+                      href="/admin/affiliates"
+                      title="アフィリエイト管理を開く"
+                      className="mt-1 flex flex-wrap gap-1 text-[11px] font-semibold"
+                    >
+                      {article.affiliateServices.map((name) => (
+                        <span key={name} className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">
+                          広告: {name}
+                        </span>
+                      ))}
+                    </Link>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-foreground-muted">{article.category.name}</td>
                 <td className="px-4 py-3 text-center">
