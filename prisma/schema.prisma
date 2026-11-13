@@ -111,6 +111,11 @@ model Article {
   tags Tag[]
   views ArticleView[]
 
+  // 本文にアフィリエイトリンク(記事間の内部リンクは含まない)があるか。本文から機械的に判定した結果で、
+  // 記事の保存時と /admin/affiliates の「再スキャン」で更新する。詳細は affiliateLinks に持つ。
+  affiliateStatus String                 @default("none") // "none" | "has"
+  affiliateLinks  ArticleAffiliateLink[]
+
   // AIリライト実行前の本文バックアップ(未確定の間だけ存在する。「元に戻す」で復元する)
   rewriteBackup ArticleRewriteBackup?
 
@@ -120,6 +125,44 @@ model Article {
 
   @@index([status, publishedAt])
   @@index([categoryId])
+  @@index([affiliateStatus])
+}
+
+// アフィリエイトの提供元サービス(広告主・プログラム)。記事本文のリンクから自動で作られ、名前・メモは管理画面で付ける。
+// 共通部分(サイドバー・フッター)のスポンサー枠は SiteSetting 側で、ここには含めない。
+model AffiliateProgram {
+  id        String   @id @default(cuid())
+  name      String
+  asp       String // "a8" | "moshimo" | "valuecommerce" | ... (src/lib/affiliateLinks.ts の ASP_RULES)
+  /// 本文のリンクから判定したプログラム識別子(A8なら a8mat の2番目の区間)。同じサービスが複数の識別子に
+  /// 分かれていても、今は別サービスとして管理する(1サービス1識別子)。配列なのは、将来まとめる場合に備えるため。
+  keys      String[]
+  memo      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  links ArticleAffiliateLink[]
+}
+
+// 記事ごとのアフィリエイトリンク。本文から機械的に抽出した結果で、記事の保存・再スキャンのたびに作り直す。
+// 同じ記事で同じリンクを何度貼っていても1行にまとめ、回数を occurrences に持つ。
+model ArticleAffiliateLink {
+  id          String   @id @default(cuid())
+  url         String // クリック先(ASPの計測URL)
+  kind        String // "text"(文字リンク) | "banner"(画像リンク) | "widget"(バリューコマースのMyLinkBox。urlは "vc-mylinkbox:ID")
+  anchorText  String   @default("") // 文字リンクの表示テキスト、バナーならalt、ウィジェットなら直前の見出し。文字リンクで空なら「見えないリンク」
+  imageUrl    String? // バナーの画像URL
+  occurrences Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+
+  program   AffiliateProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+  programId String
+
+  @@unique([articleId, kind, url])
+  @@index([programId])
 }
 
 // AIリライト(/admin/rewrite)の「元に戻す」用バックアップ。

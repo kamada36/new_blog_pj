@@ -1,6 +1,7 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { syncArticleAffiliateLinksSafely } from "@/lib/affiliateStore";
 import { isReservedSlug, slugify } from "@/lib/slug";
 import { DEFAULT_RESIDENT, type CategoryOption, type ResidentPersona } from "./guidelines";
 
@@ -192,10 +193,13 @@ export async function upsertArticleDraft(
         select: { id: true, slug: true, title: true, categoryId: true },
       });
 
+  await syncArticleAffiliateLinksSafely(prisma, saved.id, input.contentMarkdown);
+
   // 公開済みの記事を追加指示で更新した場合に、公開ページへ反映する
   // 公開ページはキャッシュ(ISR)されているため、サイト全体を更新する(ヘッダー・サイドバー・一覧も変わる)
   revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
+  revalidatePath("/admin/affiliates");
   return saved;
 }
 
@@ -253,6 +257,7 @@ function revalidateArticlePaths() {
   revalidatePath("/", "layout");
   revalidatePath("/admin/articles");
   revalidatePath("/admin/rewrite");
+  revalidatePath("/admin/affiliates");
 }
 
 export async function applyRewrite(
@@ -268,6 +273,7 @@ export async function applyRewrite(
     where: { id: article.id },
     data: { contentMarkdown, status, publishedAt },
   });
+  await syncArticleAffiliateLinksSafely(prisma, article.id, contentMarkdown);
   revalidateArticlePaths();
   return { status };
 }
@@ -289,6 +295,7 @@ export async function revertRewrite(articleId: string): Promise<{ title: string;
     }),
     prisma.articleRewriteBackup.delete({ where: { articleId } }),
   ]);
+  await syncArticleAffiliateLinksSafely(prisma, articleId, backup.originalContent);
   revalidateArticlePaths();
   return article;
 }
