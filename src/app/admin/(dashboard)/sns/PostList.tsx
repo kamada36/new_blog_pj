@@ -43,6 +43,11 @@ const STATUS_CLASS: Record<SnsStatus, string> = {
   skipped: "bg-red-50 text-red-600",
 };
 
+/** 文面の欄の高さ(行数)。空行を含めた行数に合わせ、最低7行・最高16行にする。 */
+function textareaRows(text: string): number {
+  return Math.min(16, Math.max(7, text.split("\n").length + 1));
+}
+
 function Counter({ value, max }: { value: string; max: number }) {
   const count = countChars(value);
   return <span className={count > max ? "font-bold text-red-600" : "text-foreground-muted"}>{count}/{max}字</span>;
@@ -112,25 +117,25 @@ function PostCard({
           {post.variant}. {variantLabel(post.variant)}
         </span>
         {post.articleStatus !== "published" && <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-red-600">記事は非公開(出力されません)</span>}
-        <a href={post.url} target="_blank" rel="noreferrer" className="min-w-0 truncate font-semibold text-accent-dark hover:underline">
+        <a href={post.url} target="_blank" rel="noreferrer" className="min-w-0 break-words font-semibold text-accent-dark hover:underline">
           {post.title}
         </a>
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
-        <label className="flex flex-col gap-1 text-xs">
+        <label className="flex min-w-0 flex-col gap-1 text-xs">
           <span className="flex justify-between">
             メイン投稿(リンクなし) <Counter value={mainText} max={MAIN_MAX_CHARS} />
           </span>
-          <textarea value={mainText} onChange={(e) => setMainText(e.target.value)} rows={7} className={TEXTAREA} />
+          <textarea value={mainText} onChange={(e) => setMainText(e.target.value)} rows={textareaRows(mainText)} className={TEXTAREA} />
         </label>
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs">
             <span className="flex justify-between">
               返信(ツリー)の投稿 <Counter value={replyBody} max={REPLY_MAX_CHARS} />
             </span>
-            <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={7} className={TEXTAREA} />
-            <span className="truncate text-foreground-muted">末尾に空行をはさんで ＋ {post.url}</span>
+            <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={textareaRows(replyBody)} className={TEXTAREA} />
+            <span className="break-all text-foreground-muted">末尾に空行をはさんで ＋ {post.url}</span>
           </label>
           <div className="flex flex-wrap items-end gap-3 text-xs">
             <label className="flex flex-col gap-1">
