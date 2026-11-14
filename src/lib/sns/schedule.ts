@@ -82,3 +82,77 @@ export function assignSlots(params: {
   }
   return result;
 }
+
+// ─── 投稿時刻の決定 ───────────────────────────────────────────────────────
+
+const LAST_MINUTE_OF_DAY = 23 * 60 + 59;
+/** 他の投稿の時刻から、できるだけこの分数は離す(離せないときは、同じ分にだけならないようにする) */
+const PREFERRED_SPACING_MINUTES = 10;
+const MAX_TRIES = 30;
+
+export interface TimeTarget {
+  id: string;
+  date: string;
+  slot: number;
+}
+
+export interface PickedTimes {
+  id: string;
+  /** メイン投稿の時刻(HH:mm) */
+  time: string;
+  /** 返信(ツリー)の時刻(HH:mm)。メインの数分後で、必ず同じ日に収まる */
+  replyTime: string;
+}
+
+/**
+ * 日付・時間枠の決まった投稿に、メインと返信の時刻を決める。
+ *   - メインは、時間枠の範囲内でランダム(スパム判定を避けるため、毎日同じ時刻にしない)。
+ *   - 返信は、メインの delay.min〜delay.max 分後。日をまたがないよう、メインの上限は「23:59 − 最大の間隔」までにする。
+ *   - 同じ日の他の投稿(usedByDate。分で表した時刻)と、同じ分にならないようにする。
+ *     できる範囲で PREFERRED_SPACING_MINUTES 分は離す。
+ * 時間枠の番号に対応する枠が無い投稿は、結果に含めない。
+ */
+export function pickTimes(params: {
+  targets: TimeTarget[];
+  frames: { start: string; end: string }[];
+  usedByDate: Map<string, number[]>;
+  delay: { min: number; max: number };
+  random?: () => number;
+}): PickedTimes[] {
+  const { targets, frames, delay } = params;
+  const random = params.random ?? Math.random;
+  const used = new Map<string, number[]>([...params.usedByDate].map(([date, list]) => [date, [...list]]));
+  const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+  const toTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  const between = (min: number, max: number) => min + Math.floor(random() * (max - min + 1));
+
+  const result: PickedTimes[] = [];
+  for (const target of targets) {
+    const frame = frames[target.slot - 1];
+    if (!frame) continue;
+    const low = toMinutes(frame.start);
+    const high = Math.max(low, Math.min(toMinutes(frame.end), LAST_MINUTE_OF_DAY - delay.max));
+    const dayUsed = used.get(target.date) ?? [];
+
+    let main = between(low, high);
+    let reply = main + between(delay.min, delay.max);
+    for (const spacing of [PREFERRED_SPACING_MINUTES, 1]) {
+      let found = false;
+      for (let i = 0; i < MAX_TRIES; i++) {
+        const m = between(low, high);
+        const r = m + between(delay.min, delay.max);
+        if (dayUsed.every((u) => Math.abs(u - m) >= spacing && Math.abs(u - r) >= spacing)) {
+          main = m;
+          reply = r;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    used.set(target.date, [...dayUsed, main, reply]);
+    result.push({ id: target.id, time: toTime(main), replyTime: toTime(reply) });
+  }
+  return result;
+}

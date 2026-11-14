@@ -10,6 +10,16 @@ const STATUS_PENDING = "未投稿";
 const STATUS_POSTED = "投稿済み";
 const STATUS_ERROR = "エラー";
 
+// 予定投稿時間を過ぎてから、何分までなら「投稿し損ねた分」として投稿するか。
+// 毎分のトリガーが1回飛んだ場合や、ツリー投稿(返信)の親の投稿が少し遅れた場合に、その分を取りこぼさないための猶予。
+const CATCHUP_WINDOW_MINUTES = 30;
+
+// CSVで返信(ツリー)の予定投稿時間が空のとき、メイン投稿の何分後にするか
+const DEFAULT_REPLY_DELAY_MINUTES = 5;
+
+// 「投稿管理」シートの T列: サイトID。サイト側の投稿IDをCSVから受け取って記録し、同じ投稿を二重に取り込まないために使う
+const SITE_ID_COLUMN = 20;
+
 const X_FETCH_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
   "Referer": "https://x.com/",
@@ -142,6 +152,42 @@ function setScheduledTimes(showAlert = true) {
 }
 
 /**
+ * 予定投稿時間(HH:mm)が「今(HH:mm)」までに来ていて、かつ猶予(CATCHUP_WINDOW_MINUTES)以内かを判定する。
+ * 日付が今日であることは、呼び出し側で確認する。
+ */
+function isDueNow(scheduledTime, currentTime) {
+  if (!scheduledTime || !/^\d{2}:\d{2}$/.test(scheduledTime)) return false;
+  if (scheduledTime > currentTime) return false;
+  return timeToMinutes_(currentTime) - timeToMinutes_(scheduledTime) <= CATCHUP_WINDOW_MINUTES;
+}
+
+function timeToMinutes_(time) {
+  const parts = time.split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+/**
+ * CSVの予定投稿時間("7:30" "07:30" "07:30:00" など)を "HH:mm" にそろえる。読み取れなければ空文字。
+ */
+function normalizeCsvTime_(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!match) return '';
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  if (hours > 23 || minutes > 59) return '';
+  return String(hours).padStart(2, '0') + ':' + match[2];
+}
+
+/**
+ * "HH:mm" に分を足す。同じ日(23:59まで)に収まらなければ空文字。
+ */
+function addMinutesToTime_(time, minutes) {
+  const total = timeToMinutes_(time) + minutes;
+  if (total > 23 * 60 + 59) return '';
+  return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+}
+
+/**
  * 設定シートから時間帯の範囲を取得
  */
 function getTimeRanges(settingsSheet) {
@@ -227,7 +273,7 @@ function checkAndPost_X() {
 
     if (
       formattedDate === currentDate &&
-      normalizedScheduledTime === currentTime &&
+      isDueNow(normalizedScheduledTime, currentTime) &&
       postToXFlag == 1 &&
       (xStatus === STATUS_PENDING || xStatus === "" || xStatus === null) &&
       content && content.trim() !== ""
@@ -328,7 +374,7 @@ function checkAndPost_Threads() {
 
     if (
       formattedDate === currentDate &&
-      normalizedScheduledTime === currentTime &&
+      isDueNow(normalizedScheduledTime, currentTime) &&
       postToThreadsFlag == 1 &&
       (threadsStatus === STATUS_PENDING || threadsStatus === "" || threadsStatus === null) &&
       content && content.trim() !== ""
@@ -1235,8 +1281,9 @@ function getThreadsApiSettings(settingsSheet) {
 function showImportDialog() {
   const html = HtmlService.createHtmlOutput(`
     <h2>CSVファイルをインポート</h2>
-    <p>CSVは以下の列順で作成してください:</p>
-    <p>投稿日, 投稿時間枠, 投稿内容, 投稿先_ｘ(0 or 1), 投稿先_threads(0 or 1)</p>
+    <p>CSVは以下の列順で作成してください(右側の列は省略できます):</p>
+    <p>投稿日, 投稿時間枠, 投稿内容, 投稿先_ｘ(0 or 1), 投稿先_threads(0 or 1), 予定投稿時間(HH:mm), ツリー(0 or 1), サイトID</p>
+    <p style="font-size:12px;color:#555;">予定投稿時間が入っている行は、ランダム設定をせずにその時刻で投稿します。ツリーが1の行は、直前のメイン投稿への返信として取り込み、メイン投稿の後に投稿します。サイトIDが登録済みの行は、二重登録を防ぐため取り込みません。</p>
     <form>
       <input type="file" id="csvFile" accept=".csv">
       <input type="button" value="インポート" onclick="importCSV()">
@@ -1251,9 +1298,9 @@ function showImportDialog() {
         const reader = new FileReader();
         reader.onload = function(e) {
           google.script.run
-            .withSuccessHandler(function(success) {
-              if (success) {
-                alert('CSVのインポートが完了しました');
+            .withSuccessHandler(function(result) {
+              if (result) {
+                alert(result.message);
                 google.script.run.setScheduledTimes();
               } 
               // 失敗時のアラートはサーバー側で表示されるので、ここでは閉じるだけ
@@ -1268,8 +1315,8 @@ function showImportDialog() {
       }
     </script>
   `)
-    .setWidth(550)
-    .setHeight(300);
+    .setWidth(600)
+    .setHeight(380);
   SpreadsheetApp.getUi().showModalDialog(html, 'CSVインポート');
 }
 
@@ -1285,11 +1332,17 @@ function importCSVData(csvData) {
 
     const postsSheet = ss.getSheetByName(SHEET_NAME_POSTS);
     if (!postsSheet) {
-      throw new Error(`シート '${SHEET_NAME_POSTS}' が見つかりません。`);
+      throw new Error("シート '" + SHEET_NAME_POSTS + "' が見つかりません。");
     }
-    
+
+    // サイトID列(T列)まで列が無いシートは、列を足す
+    if (postsSheet.getMaxColumns() < SITE_ID_COLUMN) {
+      postsSheet.insertColumnsAfter(postsSheet.getMaxColumns(), SITE_ID_COLUMN - postsSheet.getMaxColumns());
+    }
+
     const lastRow = postsSheet.getLastRow();
     let nextId = 1;
+    const knownSiteIds = new Set(); // すでにシートにあるサイトID(二重登録の判定用)
     if (lastRow > 1) {
       const ids = postsSheet.getRange(2, 1, lastRow - 1, 1).getValues()
         .flat()
@@ -1297,6 +1350,10 @@ function importCSVData(csvData) {
       if (ids.length > 0) {
         nextId = Math.max(...ids) + 1;
       }
+      postsSheet.getRange(2, SITE_ID_COLUMN, lastRow - 1, 1).getValues().flat().forEach(function (value) {
+        const key = String(value || '').trim();
+        if (key) knownSiteIds.add(key);
+      });
     }
 
     if (!csvData || typeof csvData !== 'string' || !csvData.trim()) {
@@ -1306,35 +1363,103 @@ function importCSVData(csvData) {
     const parsedData = Utilities.parseCsv(csvData);
     const newData = [];
 
-    for (const row of parsedData) {
+    // ツリー投稿(返信)用: 直前のメイン投稿の情報と、その投稿ごとの返信の数
+    let lastParent = null; // { id, timeFrame, time }
+    let parentIsDuplicate = false; // 直前のメイン投稿が、登録済みのため飛ばされたか
+    const childCounts = {};
+
+    // 取り込まなかった行の記録(結果の表示用。行番号はCSVの行で、見出し行を1行目と数える)
+    let duplicateCount = 0;
+    let orphanCount = 0;
+    let treeCount = 0;
+    const invalidLines = [];
+
+    for (let index = 0; index < parsedData.length; index++) {
+      const row = parsedData[index];
+      const lineNo = index + 1;
       try {
-        if (!Array.isArray(row) || row.length < 3) {
+        if (!Array.isArray(row)) continue;
+        // 空行と、見出し行は、飛ばした行として数えない
+        if (row.every(function (cell) { return String(cell || '').trim() === ''; })) continue;
+        if (index === 0 && String(row[0] || '').trim() === '投稿日') continue;
+
+        // 7列目: ツリー(1なら、直前のメイン投稿への返信)。メイン投稿の行なら、それ以前の親の情報は引き継がない
+        const isTree = row.length > 6 && String(row[6] || '').trim() === '1';
+        if (!isTree) {
+          lastParent = null;
+          parentIsDuplicate = false;
+        }
+
+        if (row.length < 3) {
+          invalidLines.push(lineNo);
           continue;
         }
 
-        const postDate = (row[0] || '').trim();
+        const postDate = String(row[0] || '').trim();
         if (!postDate || isNaN(new Date(postDate).getTime())) {
+          invalidLines.push(lineNo);
           continue;
         }
 
-        const timeFrameStr = (row[1] || '').trim();
-        const timeFrame = parseInt(timeFrameStr, 10);
-        if (isNaN(timeFrame) || timeFrame < 1 || timeFrame > 3) {
+        // 8列目: サイトID。シートに登録済みなら取り込まない(同じCSVを2回読み込んでも二重にならない)
+        const siteId = row.length > 7 ? String(row[7] || '').trim() : '';
+        if (isTree && parentIsDuplicate) {
+          // 親のメイン投稿が登録済みで飛ばされたので、その返信も飛ばす
+          duplicateCount++;
+          continue;
+        }
+        if (siteId && knownSiteIds.has(siteId)) {
+          duplicateCount++;
+          if (!isTree) parentIsDuplicate = true;
+          continue;
+        }
+        if (isTree && !lastParent) {
+          // 直前にメイン投稿が無い返信は、親が分からないため取り込まない
+          orphanCount++;
           continue;
         }
 
-        let content = (row[2] || '').replace(/\\n/g, '\n').trim();
+        // 6列目: 予定投稿時間(HH:mm)。入っていれば、ランダム設定はせずにこの時刻で投稿する
+        let time = normalizeCsvTime_(row.length > 5 ? row[5] : '');
+        // 返信の時刻が空のときは、メイン投稿の数分後にする(メイン投稿に時刻がある場合)
+        if (isTree && !time && lastParent && lastParent.time) {
+          time = addMinutesToTime_(lastParent.time, DEFAULT_REPLY_DELAY_MINUTES);
+        }
 
-        const postToX = (row.length > 3 && (row[3] || '').trim() !== '') ? parseInt(row[3].trim(), 10) : defaultPostToX;
-        const postToThreads = (row.length > 4 && (row[4] || '').trim() !== '') ? parseInt(row[4].trim(), 10) : defaultPostToThreads;
+        let timeFrame = parseInt(String(row[1] || '').trim(), 10);
+        if (time) {
+          // 時刻が決まっている行は、時間枠が空・4以上でも受け付ける(サイト側の時間枠は5つまで設定できる)
+          if (isNaN(timeFrame) && isTree && lastParent) timeFrame = lastParent.timeFrame;
+          if (isNaN(timeFrame)) timeFrame = '';
+        } else if (isNaN(timeFrame) || timeFrame < 1 || timeFrame > 3) {
+          invalidLines.push(lineNo);
+          continue;
+        }
 
-        // 新しい列構造に合わせてデータを整形
-        newData.push([
-          nextId++,   // A: 投稿ID
-          '',         // B: ツリーID
+        let content = String(row[2] || '').replace(/\\n/g, '\n').trim();
+
+        const postToX = (row.length > 3 && String(row[3] || '').trim() !== '') ? parseInt(String(row[3]).trim(), 10) : defaultPostToX;
+        const postToThreads = (row.length > 4 && String(row[4] || '').trim() !== '') ? parseInt(String(row[4]).trim(), 10) : defaultPostToThreads;
+
+        let postId;
+        let treeId = '';
+        if (isTree) {
+          treeId = lastParent.id;
+          childCounts[treeId] = (childCounts[treeId] || 0) + 1;
+          postId = treeId + '_' + childCounts[treeId]; // onEditの採番と同じ「親ID_連番」
+          treeCount++;
+        } else {
+          postId = nextId++;
+          lastParent = { id: postId, timeFrame: timeFrame, time: time };
+        }
+
+        // 新しい列構造に合わせてデータを整形(T列まで。N〜S列は空欄)
+        const record = [
+          postId,     // A: 投稿ID(返信は「親ID_連番」)
+          treeId,     // B: ツリーID(返信なら親の投稿ID)
           postDate,   // C: 投稿日
           timeFrame,  // D: 投稿時間枠
-          '',         // E: 予定投稿時間
+          time ? time + ':00' : '', // E: 予定投稿時間(空ならランダム設定の対象)
           content,    // F: 投稿内容
           STATUS_PENDING, // G: X_状態
           '',         // H: X_投稿時間
@@ -1343,19 +1468,44 @@ function importCSVData(csvData) {
           '',         // K: 投稿タイプ
           postToX,    // L: to_X
           postToThreads // M: to_Thr
-        ]);
+        ];
+        while (record.length < SITE_ID_COLUMN - 1) record.push('');
+        record.push(siteId); // T: サイトID
+        newData.push(record);
+        if (siteId) knownSiteIds.add(siteId);
 
       } catch (e) {
+        invalidLines.push(lineNo);
         console.error("CSVインポート中にエラーが発生した行をスキップします。行データ: ", row.join(','), "エラー: ", e.message);
       }
     }
 
-    if (newData.length === 0) {
+    if (newData.length === 0 && duplicateCount === 0) {
       throw new Error('有効なデータがCSVファイルに見つかりませんでした。ファイルの内容や形式を確認してください。');
     }
-    
-    postsSheet.getRange(lastRow + 1, 1, newData.length, newData[0].length).setValues(newData);
-    return true;
+
+    if (newData.length > 0) {
+      postsSheet.getRange(lastRow + 1, 1, newData.length, SITE_ID_COLUMN).setValues(newData);
+    }
+
+    // 結果の表示(取り込まなかった行があれば、理由と行数を伝える)
+    const lines = [];
+    lines.push(newData.length > 0
+      ? 'CSVのインポートが完了しました。' + newData.length + '件を取り込みました' + (treeCount > 0 ? '(うちツリー投稿 ' + treeCount + '件)' : '') + '。'
+      : '新しく取り込む投稿はありませんでした。');
+    if (duplicateCount > 0) {
+      lines.push('登録済みのため、' + duplicateCount + '件を飛ばしました。');
+    }
+    if (orphanCount > 0) {
+      lines.push('親のメイン投稿が無いため、' + orphanCount + '件のツリー投稿を取り込めませんでした(メイン投稿と同じCSVの、直後の行に置いてください)。');
+    }
+    if (invalidLines.length > 0) {
+      const shown = invalidLines.slice(0, 10).join(', ') + (invalidLines.length > 10 ? ' ほか' : '');
+      lines.push('形式が正しくないため、' + invalidLines.length + '件を飛ばしました(CSVの行: ' + shown + ')。');
+    }
+    const message = lines.join('\n');
+    logAction(message.replace(/\n/g, ' '));
+    return { imported: newData.length, message: message };
 
   } catch (error) {
     console.error('CSVインポートエラー:', error.toString());
@@ -1855,7 +2005,7 @@ function setupSpreadsheet() {
 
   // --- 投稿管理シート ---
   let postsSheet = ss.getSheetByName(SHEET_NAME_POSTS);
-  const expectedHeaders = [["投稿ID", "ﾂﾘｰID", "投稿日", "投稿時間枠", "予定投稿時間", "投稿内容", "X_状態", "X_投稿時間", "Thr_状態", "Thr_投稿時間", "投稿タイプ", "to_X", "to_Thr", "X(共通)動画", "X(共通)画像", "Threads(専用)動画", "Threads(専用)画像", "X_Post_ID", "Threads_Post_ID"]];
+  const expectedHeaders = [["投稿ID", "ﾂﾘｰID", "投稿日", "投稿時間枠", "予定投稿時間", "投稿内容", "X_状態", "X_投稿時間", "Thr_状態", "Thr_投稿時間", "投稿タイプ", "to_X", "to_Thr", "X(共通)動画", "X(共通)画像", "Threads(専用)動画", "Threads(専用)画像", "X_Post_ID", "Threads_Post_ID", "サイトID"]];
   
   if (!postsSheet) {
     postsSheet = ss.insertSheet(SHEET_NAME_POSTS);
@@ -1909,6 +2059,7 @@ function setupSpreadsheet() {
   postsSheet.setColumnWidth(17, 150); // Q: Threads(専用)画像
   postsSheet.setColumnWidth(18, 180); // R: X_Post_ID
   postsSheet.setColumnWidth(19, 180); // S: Threads_Post_ID
+  postsSheet.setColumnWidth(20, 180); // T: サイトID
 
   // 特定の列を中央揃えに
   postsSheet.getRange('A:E').setHorizontalAlignment('center');
@@ -1916,8 +2067,8 @@ function setupSpreadsheet() {
   postsSheet.getRange('I:I').setHorizontalAlignment('center');
   postsSheet.getRange('K:M').setHorizontalAlignment('center');
 
-  // X_Post_ID (R列) と Threads_Post_ID (S列) を非表示にする
-  postsSheet.hideColumns(18, 2);
+  // X_Post_ID (R列)、Threads_Post_ID (S列)、サイトID (T列) を非表示にする
+  postsSheet.hideColumns(18, 3);
 
   // データ検証ルールを設定
   const timeFrameRule = SpreadsheetApp.newDataValidation().requireValueInList([1, 2, 3], true).build();

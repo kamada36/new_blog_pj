@@ -179,8 +179,12 @@ model SnsPost {
   status       String   @default("draft") // "draft"(承認待ち) | "approved" | "skipped"
   /// 投稿日(日本時間の yyyy-MM-dd)。未割り当てならnull
   scheduledDate String?
-  /// 投稿時間枠(1〜)。時間枠ごとの時刻と、枠内のばらつきはスプレッドシート側の設定で決まる
+  /// 投稿時間枠(1〜)。枠の範囲は SnsSetting.timeFrames で決める
   slot         Int?
+  /// メイン投稿の時刻(日本時間の HH:mm)。割り当て時に、時間枠の範囲内でランダムに決める
+  scheduledTime String?
+  /// 返信(ツリー)の時刻(HH:mm)。メインの数分後(同じ日の範囲内)
+  replyTime    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -189,6 +193,16 @@ model SnsPost {
 
   @@unique([articleId, variant])
   @@index([status, scheduledDate])
+}
+
+// SNS投稿の設定(1行だけ。id は常に "default")。公開ページが読む SiteSetting には列を足さず、ここに分けて持つ。
+model SnsSetting {
+  id            String @id @default("default")
+  /// 時間枠(枠の番号は並び順の1から)。"HH:mm-HH:mm" をカンマで区切る。例: "07:30-08:30,12:00-13:00,20:00-22:00"
+  timeFrames    String @default("07:30-08:30,12:00-13:00,20:00-22:00")
+  /// メイン投稿から返信までの間隔(分)の範囲。この範囲でランダムに決める
+  replyDelayMin Int    @default(3)
+  replyDelayMax Int    @default(7)
 }
 
 // AIリライト(/admin/rewrite)の「元に戻す」用バックアップ。

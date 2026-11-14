@@ -59,3 +59,46 @@ export function isDateKey(value: unknown): value is string {
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
+
+// ─── 時間枠・時刻 ─────────────────────────────────────────────────────────
+
+export const MAX_TIME_FRAMES = 5;
+export const DEFAULT_TIME_FRAMES = "07:30-08:30,12:00-13:00,20:00-22:00";
+export const DEFAULT_REPLY_DELAY = { min: 3, max: 7 } as const;
+
+export interface TimeFrame {
+  /** 日本時間の HH:mm */
+  start: string;
+  end: string;
+}
+
+/** `HH:mm`(00:00〜23:59)の形か。 */
+export function isTimeKey(value: unknown): value is string {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+export function minutesToTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** 保存用の文字列("07:30-08:30,12:00-13:00,…")を時間枠の配列にする。形式が正しくなければ null。 */
+export function parseTimeFrames(raw: string): TimeFrame[] | null {
+  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (parts.length === 0 || parts.length > MAX_TIME_FRAMES) return null;
+  const frames: TimeFrame[] = [];
+  for (const part of parts) {
+    const [start, end] = part.split("-");
+    if (!isTimeKey(start) || !isTimeKey(end) || timeToMinutes(start) >= timeToMinutes(end)) return null;
+    frames.push({ start, end });
+  }
+  return frames;
+}
+
+export function stringifyTimeFrames(frames: TimeFrame[]): string {
+  return frames.map((f) => `${f.start}-${f.end}`).join(",");
+}

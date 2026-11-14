@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { contentPath } from "@/lib/slug";
 import { jstDateKey } from "@/lib/viewAnalytics";
 import { addDaysToDateKey } from "@/lib/sns/schedule";
-import { getSnsStats } from "@/lib/sns/store";
+import { getSnsSettings, getSnsStats } from "@/lib/sns/store";
 import { GeneratePanel } from "./GeneratePanel";
 import { PostList, type SnsPostRow } from "./PostList";
 import { SchedulePanel } from "./SchedulePanel";
@@ -42,11 +42,12 @@ export default async function AdminSnsPage({ searchParams }: PageProps<"/admin/s
   // 割り当て済みは日付順、それ以外は新しい記事から
   const orderBy: Prisma.SnsPostOrderByWithRelationInput[] =
     filter === "scheduled"
-      ? [{ scheduledDate: "asc" }, { slot: "asc" }]
+      ? [{ scheduledDate: "asc" }, { scheduledTime: "asc" }, { slot: "asc" }]
       : [{ article: { publishedAt: "desc" } }, { articleId: "asc" }, { variant: "asc" }];
 
-  const [stats, total, rows] = await Promise.all([
+  const [stats, settings, total, rows] = await Promise.all([
     getSnsStats(),
+    getSnsSettings(),
     prisma.snsPost.count({ where }),
     prisma.snsPost.findMany({
       where,
@@ -61,6 +62,8 @@ export default async function AdminSnsPage({ searchParams }: PageProps<"/admin/s
         status: true,
         scheduledDate: true,
         slot: true,
+        scheduledTime: true,
+        replyTime: true,
         updatedAt: true,
         article: { select: { title: true, slug: true, status: true } },
       },
@@ -79,6 +82,8 @@ export default async function AdminSnsPage({ searchParams }: PageProps<"/admin/s
     status: row.status,
     scheduledDate: row.scheduledDate,
     slot: row.slot,
+    scheduledTime: row.scheduledTime,
+    replyTime: row.replyTime,
     updatedKey: row.updatedAt.toISOString(),
   }));
 
@@ -117,7 +122,14 @@ export default async function AdminSnsPage({ searchParams }: PageProps<"/admin/s
 
       <div className="mt-6 flex flex-col gap-4">
         <GeneratePanel publishedArticles={stats.publishedArticles} articlesWithPosts={stats.articlesWithPosts} />
-        <SchedulePanel approvedUnscheduled={stats.approvedUnscheduled} today={today} defaultTo={addDaysToDateKey(today, 30)} />
+        <SchedulePanel
+          approvedUnscheduled={stats.approvedUnscheduled}
+          today={today}
+          defaultTo={addDaysToDateKey(today, 30)}
+          frames={settings.frames}
+          replyDelayMin={settings.replyDelayMin}
+          replyDelayMax={settings.replyDelayMax}
+        />
       </div>
 
       <h2 className="mt-8 text-sm font-bold">投稿の一覧</h2>
@@ -151,7 +163,7 @@ export default async function AdminSnsPage({ searchParams }: PageProps<"/admin/s
       </div>
       <p className="mt-3 text-xs text-foreground-muted">{total}件</p>
 
-      <PostList posts={posts} />
+      <PostList posts={posts} slotCount={settings.frames.length} />
 
       {totalPages > 1 && (
         <nav className="mt-6 flex items-center justify-center gap-4 text-sm">

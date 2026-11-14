@@ -4,11 +4,23 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { describeAiError } from "@/lib/ai/provider";
-import { isDateKey, isSnsStatus, normalizePostText, type SnsStatus } from "@/lib/sns/format";
+import {
+  isDateKey,
+  isSnsStatus,
+  isTimeKey,
+  MAX_TIME_FRAMES,
+  normalizePostText,
+  parseTimeFrames,
+  type SnsStatus,
+} from "@/lib/sns/format";
 import {
   clearUpcomingSchedule,
   generateNextBatch,
+  getSnsSettings,
+  pickReplyTime,
+  pickTimesForPost,
   regeneratePost,
+  saveSnsSettings,
   scheduleApprovedPosts,
   type SnsBatchResult,
 } from "@/lib/sns/store";
@@ -16,7 +28,7 @@ import {
 type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 const SESSION_EXPIRED = "セッションが切れました。ログインし直してください。";
-const MAX_SLOT_COUNT = 5;
+const MAX_SLOT_COUNT = MAX_TIME_FRAMES;
 
 /** 文面のまだ無い公開記事を、数件ぶん作る。画面側が、残りが無くなるまで繰り返し呼ぶ。 */
 export async function generateSnsBatchAction(input: { excludeIds: string[] }): Promise<ActionResult<SnsBatchResult>> {
@@ -44,7 +56,7 @@ export async function setSnsStatusAction(input: { ids: string[]; status: SnsStat
   const { ids, status } = parsed.data;
   const result = await prisma.snsPost.updateMany({
     where: { id: { in: ids } },
-    data: status === "approved" ? { status } : { status, scheduledDate: null, slot: null },
+    data: status === "approved" ? { status } : { status, scheduledDate: null, slot: null, scheduledTime: null, replyTime: null },
   });
   return { ok: true, count: result.count };
 }
@@ -55,9 +67,15 @@ const updateSchema = z.object({
   replyBody: z.string().max(500),
   scheduledDate: z.string().nullable(),
   slot: z.number().int().min(1).max(MAX_SLOT_COUNT).nullable(),
+  /** HH:mm。空なら、時間枠の範囲内でランダムに決める */
+  scheduledTime: z.string().nullable(),
+  replyTime: z.string().nullable(),
 });
 
-/** 1件の文面・日付・時間枠を保存する。日付と枠は、両方入れるか両方空にする。 */
+/**
+ * 1件の文面・日付・時間枠・時刻を保存する。日付と枠は、両方入れるか両方空にする。
+ * 日付と枠があるのに時刻が空のときは、時間枠の範囲内でランダムに決める(返信はメインの数分後)。
+ */
 export async function updateSnsPostAction(input: z.input<typeof updateSchema>): Promise<ActionResult> {
   if (!(await getSessionUser())) return { ok: false, error: SESSION_EXPIRED };
   const parsed = updateSchema.safeParse(input);
@@ -71,11 +89,54 @@ export async function updateSnsPostAction(input: z.input<typeof updateSchema>): 
   if ((scheduledDate === null) !== (slot === null)) return { ok: false, error: "投稿日と時間枠は、両方入力するか、両方空にしてください。" };
   if (scheduledDate !== null && !isDateKey(scheduledDate)) return { ok: false, error: "投稿日は yyyy-MM-dd の形で入力してください。" };
 
+  let scheduledTime = parsed.data.scheduledTime || null;
+  let replyTime = parsed.data.replyTime || null;
+  if ((scheduledTime && !isTimeKey(scheduledTime)) || (replyTime && !isTimeKey(replyTime))) {
+    return { ok: false, error: "時刻は HH:mm の形(例: 07:45)で入力してください。" };
+  }
+
+  if (scheduledDate === null || slot === null) {
+    scheduledTime = null;
+    replyTime = null;
+  } else {
+    const { frames } = await getSnsSettings();
+    if (slot > frames.length) return { ok: false, error: `時間枠は1〜${frames.length}で指定してください。` };
+    if (!scheduledTime) {
+      const picked = await pickTimesForPost(id, scheduledDate, slot);
+      if (!picked) return { ok: false, error: "時刻を決められませんでした。" };
+      scheduledTime = picked.time;
+      replyTime = replyTime && replyTime > scheduledTime ? replyTime : picked.replyTime;
+    } else if (!replyTime) {
+      replyTime = await pickReplyTime(scheduledTime);
+    }
+    if (replyTime <= scheduledTime) return { ok: false, error: "返信の時刻は、メインより後(同じ日の範囲内)にしてください。" };
+  }
+
   try {
-    await prisma.snsPost.update({ where: { id }, data: { mainText, replyBody, scheduledDate, slot } });
+    await prisma.snsPost.update({ where: { id }, data: { mainText, replyBody, scheduledDate, slot, scheduledTime, replyTime } });
   } catch {
     return { ok: false, error: "投稿が見つかりませんでした。" };
   }
+  return { ok: true };
+}
+
+const settingsSchema = z.object({
+  frames: z.array(z.object({ start: z.string(), end: z.string() })).min(1).max(MAX_TIME_FRAMES),
+  replyDelayMin: z.number().int().min(1).max(60),
+  replyDelayMax: z.number().int().min(1).max(60),
+});
+
+/** 時間枠(開始・終了時刻)と、メインから返信までの間隔の範囲を保存する。すでに割り当てた予定は変わらない。 */
+export async function saveSnsSettingsAction(input: z.input<typeof settingsSchema>): Promise<ActionResult> {
+  if (!(await getSessionUser())) return { ok: false, error: SESSION_EXPIRED };
+  const parsed = settingsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "入力内容が正しくありません。" };
+
+  const frames = parseTimeFrames(parsed.data.frames.map((f) => `${f.start}-${f.end}`).join(","));
+  if (!frames) return { ok: false, error: "時間枠は、開始時刻が終了時刻より前になるように、HH:mm の形で入力してください。" };
+  if (parsed.data.replyDelayMin > parsed.data.replyDelayMax) return { ok: false, error: "返信までの間隔は、最小が最大以下になるように入力してください。" };
+
+  await saveSnsSettings({ frames, replyDelayMin: parsed.data.replyDelayMin, replyDelayMax: parsed.data.replyDelayMax });
   return { ok: true };
 }
 
@@ -93,7 +154,6 @@ export async function regenerateSnsPostAction(id: string): Promise<ActionResult>
 
 const scheduleSchema = z.object({
   postsPerDay: z.number().int().min(1).max(10),
-  slotCount: z.number().int().min(1).max(MAX_SLOT_COUNT),
   days: z.number().int().min(1).max(90),
 });
 

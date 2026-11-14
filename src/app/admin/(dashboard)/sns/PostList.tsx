@@ -24,6 +24,9 @@ export interface SnsPostRow {
   status: string;
   scheduledDate: string | null;
   slot: number | null;
+  /** メイン・返信の時刻(HH:mm) */
+  scheduledTime: string | null;
+  replyTime: string | null;
   /** 更新日時。保存・承認のあとに入力欄を最新の値へ作り直すためのキー */
   updatedKey: string;
 }
@@ -47,11 +50,14 @@ function Counter({ value, max }: { value: string; max: number }) {
 
 function PostCard({
   post,
+  slotCount,
   selected,
   onToggle,
   onError,
 }: {
   post: SnsPostRow;
+  /** 時間枠の数(設定で決まる) */
+  slotCount: number;
   selected: boolean;
   onToggle: () => void;
   onError: (message: string) => void;
@@ -61,11 +67,14 @@ function PostCard({
   const [replyBody, setReplyBody] = useState(post.replyBody);
   const [date, setDate] = useState(post.scheduledDate ?? "");
   const [slot, setSlot] = useState(post.slot ? String(post.slot) : "");
+  const [time, setTime] = useState(post.scheduledTime ?? "");
+  const [replyTime, setReplyTime] = useState(post.replyTime ?? "");
   const [busy, setBusy] = useState(false);
 
   const status: SnsStatus = isSnsStatus(post.status) ? post.status : "draft";
   const dirty =
-    mainText !== post.mainText || replyBody !== post.replyBody || date !== (post.scheduledDate ?? "") || slot !== (post.slot ? String(post.slot) : "");
+    mainText !== post.mainText || replyBody !== post.replyBody || date !== (post.scheduledDate ?? "") || slot !== (post.slot ? String(post.slot) : "") ||
+    time !== (post.scheduledTime ?? "") || replyTime !== (post.replyTime ?? "");
 
   async function run(task: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setBusy(true);
@@ -88,6 +97,8 @@ function PostCard({
         replyBody,
         scheduledDate: date || null,
         slot: slot ? Number(slot) : null,
+        scheduledTime: time || null,
+        replyTime: replyTime || null,
       })
     );
   const setStatus = (next: SnsStatus) => run(() => setSnsStatusAction({ ids: [post.id], status: next }));
@@ -124,18 +135,26 @@ function PostCard({
           <div className="flex flex-wrap items-end gap-3 text-xs">
             <label className="flex flex-col gap-1">
               投稿日
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm" />
+              <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setTime(""); setReplyTime(""); }} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm" />
             </label>
             <label className="flex flex-col gap-1">
               時間枠
-              <select value={slot} onChange={(e) => setSlot(e.target.value)} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm">
+              <select value={slot} onChange={(e) => { setSlot(e.target.value); setTime(""); setReplyTime(""); }} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm">
                 <option value="">未定</option>
-                {[1, 2, 3, 4, 5].map((n) => (
+                {Array.from({ length: Math.max(slotCount, post.slot ?? 0) }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              メインの時刻
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} disabled={!date || !slot} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm disabled:opacity-50" />
+            </label>
+            <label className="flex flex-col gap-1">
+              返信の時刻
+              <input type="time" value={replyTime} onChange={(e) => setReplyTime(e.target.value)} disabled={!date || !slot} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm disabled:opacity-50" />
             </label>
             {(date || slot) && (
               <button
@@ -143,6 +162,8 @@ function PostCard({
                 onClick={() => {
                   setDate("");
                   setSlot("");
+                  setTime("");
+                  setReplyTime("");
                 }}
                 className="pb-2 text-foreground-muted hover:text-accent-dark hover:underline"
               >
@@ -189,7 +210,7 @@ function PostCard({
   );
 }
 
-export function PostList({ posts }: { posts: SnsPostRow[] }) {
+export function PostList({ posts, slotCount }: { posts: SnsPostRow[]; slotCount: number }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
@@ -249,6 +270,7 @@ export function PostList({ posts }: { posts: SnsPostRow[] }) {
           <PostCard
             key={`${post.id}:${post.updatedKey}`}
             post={post}
+            slotCount={slotCount}
             selected={selected.has(post.id)}
             onToggle={() => toggle(post.id)}
             onError={setError}
