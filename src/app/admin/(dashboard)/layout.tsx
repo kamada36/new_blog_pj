@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/admin/articles", label: "記事" },
   { href: "/admin/analytics", label: "閲覧数分析" },
   { href: "/admin/affiliates", label: "アフィリエイト" },
+  { href: "/admin/sns", label: "SNS投稿" },
   { href: "/admin/generate", label: "AI記事生成" },
   { href: "/admin/rewrite", label: "AIリライト" },
   { href: "/admin/media", label: "メディア" },
