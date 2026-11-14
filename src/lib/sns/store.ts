@@ -176,20 +176,48 @@ export async function scheduleApprovedPosts(options: {
   // 日付・枠と一緒に、メインと返信の時刻も決める(同じ日の他の投稿と、同じ分にならないようにする)
   const times = await pickTimesFor(assignments, settings);
   const timeById = new Map(times.map((t) => [t.id, t]));
-  await prisma.$transaction(
-    assignments.map((a) =>
-      prisma.snsPost.update({
-        where: { id: a.id },
-        data: {
-          scheduledDate: a.date,
-          slot: a.slot,
-          scheduledTime: timeById.get(a.id)?.time ?? null,
-          replyTime: timeById.get(a.id)?.replyTime ?? null,
-        },
-      })
-    )
+  await applyScheduleUpdates(
+    assignments.map((a) => ({
+      id: a.id,
+      date: a.date,
+      slot: a.slot,
+      time: timeById.get(a.id)?.time ?? null,
+      replyTime: timeById.get(a.id)?.replyTime ?? null,
+    }))
   );
   return { scheduled: assignments.length, unscheduled: pending.length - assignments.length };
+}
+
+export interface ScheduleUpdate {
+  id: string;
+  date: string;
+  slot: number;
+  time: string | null;
+  replyTime: string | null;
+}
+
+/**
+ * 投稿の日付・枠・時刻を、1回のSQLでまとめて更新する(全件が一度に反映され、途中までの更新にはならない)。
+ * 1件ずつの update を $transaction に並べると、本番(NetlifyからシンガポールのDBへの往復が遅い環境)では
+ * Prismaのトランザクションの制限時間(5秒)を超えて失敗するため、件数によらず1往復で済ませる。
+ */
+export async function applyScheduleUpdates(updates: ScheduleUpdate[], db: Pick<typeof prisma, "$executeRaw"> = prisma): Promise<void> {
+  if (updates.length === 0) return;
+  await db.$executeRaw`
+    UPDATE "SnsPost" AS p
+    SET "scheduledDate" = v."date",
+        "slot" = v."slot",
+        "scheduledTime" = v."time",
+        "replyTime" = v."replyTime",
+        "updatedAt" = (NOW() AT TIME ZONE 'UTC')
+    FROM unnest(
+      ${updates.map((u) => u.id)}::text[],
+      ${updates.map((u) => u.date)}::text[],
+      ${updates.map((u) => u.slot)}::int[],
+      ${updates.map((u) => u.time)}::text[],
+      ${updates.map((u) => u.replyTime)}::text[]
+    ) AS v("id", "date", "slot", "time", "replyTime")
+    WHERE p."id" = v."id"`;
 }
 
 /** 明日以降に割り当てた日付・枠・時刻を解除する(今日以前の分は、すでにツールへ渡した可能性があるため残す)。 */
@@ -291,8 +319,12 @@ export async function fillMissingTimes(): Promise<number> {
   });
   const targets = rows.flatMap((r) => (r.scheduledDate && r.slot ? [{ id: r.id, date: r.scheduledDate, slot: r.slot }] : []));
   const picked = await pickTimesFor(targets, await getSnsSettings());
-  await prisma.$transaction(
-    picked.map((p) => prisma.snsPost.update({ where: { id: p.id }, data: { scheduledTime: p.time, replyTime: p.replyTime } }))
+  const targetById = new Map(targets.map((t) => [t.id, t]));
+  await applyScheduleUpdates(
+    picked.flatMap((p) => {
+      const target = targetById.get(p.id);
+      return target ? [{ id: p.id, date: target.date, slot: target.slot, time: p.time, replyTime: p.replyTime }] : [];
+    })
   );
   return picked.length;
 }
