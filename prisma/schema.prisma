@@ -123,6 +123,9 @@ model Article {
   linkIndex      ArticleLinkIndex?
   linkSuggestion ArticleLinkSuggestion?
 
+  // X・Threadsへの紹介投稿(SNS投稿キュー)
+  snsPosts SnsPost[]
+
   @@index([status, publishedAt])
   @@index([categoryId])
   @@index([affiliateStatus])
@@ -163,6 +166,29 @@ model ArticleAffiliateLink {
 
   @@unique([articleId, kind, url])
   @@index([programId])
+}
+
+// 記事の紹介投稿(X・Threads)。別システム(スプレッドシート+GAS)が、投稿日・時間枠・投稿内容のCSVを読んで投稿する。
+// 1記事につき variant(1〜3)ごとに1件。切り口を変えた文面を日をおいて出し、同じ文の繰り返しを避ける。
+// リンクはメイン投稿に入れず、返信(ツリー)に置く。返信のURLは記事のスラッグから出力時に組み立てるため、ここには持たない。
+model SnsPost {
+  id           String   @id @default(cuid())
+  variant      Int // 1: 気づき・主張型 / 2: 問いかけ・共感型 / 3: 要点型
+  mainText     String // メイン投稿(ハッシュタグ込み。リンクは入れない)
+  replyBody    String // ツリーの返信の本文(テーマ・キャッチコピー・紹介文・ハッシュタグ。末尾のURLは出力時に付ける)
+  status       String   @default("draft") // "draft"(承認待ち) | "approved" | "skipped"
+  /// 投稿日(日本時間の yyyy-MM-dd)。未割り当てならnull
+  scheduledDate String?
+  /// 投稿時間枠(1〜)。時間枠ごとの時刻と、枠内のばらつきはスプレッドシート側の設定で決まる
+  slot         Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+
+  @@unique([articleId, variant])
+  @@index([status, scheduledDate])
 }
 
 // AIリライト(/admin/rewrite)の「元に戻す」用バックアップ。

@@ -34,7 +34,7 @@ const SHORTLIST_SIZE = 12;
 // ─── 補助 ─────────────────────────────────────────────────────────────────
 
 /** 並列数を制限して実行する。最初の例外で新規の開始を止め、その例外を投げ直す。 */
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+export async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   let failure: { error: unknown } | null = null;
