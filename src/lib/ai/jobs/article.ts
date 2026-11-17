@@ -1,4 +1,13 @@
-import { restoreAffiliateLinks } from "@/lib/ai/affiliate";
+import {
+  affiliateUnitTokens,
+  bannerLinkPlaceholder,
+  extractAffiliateCode,
+  pairedLinkCount,
+  restoreAffiliateLinks,
+  setLinkPlaceholder,
+  textLinkPlaceholder,
+} from "@/lib/ai/affiliate";
+import { ensureAffiliatePlacements, placementsPerUnit } from "@/lib/ai/affiliatePlacement";
 import { buildArticlePrompt, buildContinuationPrompt } from "@/lib/ai/articlePrompts";
 import {
   getResidentPersona,
@@ -26,7 +35,28 @@ const MIN_VALID_CONTENT_CHARS = 50;
 
 export async function runArticleJob(body: ArticleRequest, ctx: JobContext<ArticleStreamEvent>): Promise<void> {
   const { send } = ctx;
-  const { source, wordCount, modelId, textLinks, bannerLinks } = body;
+  const { source, wordCount, modelId } = body;
+
+  // 「追加指示」にASPのコード(<a href=計測URL>…</a> と計測用の <img>)が貼られていたら、AIに見せる前に目印文字列へ
+  // 置き換える。AIがURLや表示テキストを書き換えたり、<img> を生HTMLのまま本文に残したりするのを防ぎ、
+  // 実際のリンクは生成後にプログラムが元のまま差し込む。フォームで指定したリンクの続き番号にして、同じ入力順のものはセットにする。
+  const formTextCount = body.textLinks.length;
+  const formBannerCount = body.bannerLinks.length;
+  const extracted = extractAffiliateCode(body.additionalInstruction ?? "", formTextCount, formBannerCount);
+  const textLinks = [...body.textLinks, ...extracted.textLinks];
+  const bannerLinks = [...body.bannerLinks, ...extracted.bannerLinks];
+  const pairedCount = pairedLinkCount(textLinks, bannerLinks);
+
+  // セットになったリンクの目印は、指示文の中でも、セットの目印に読み替える(プロンプトにはセットの目印だけを載せるため)
+  let additionalInstruction = body.additionalInstruction ? extracted.text : undefined;
+  if (additionalInstruction) {
+    for (let i = formTextCount; i < pairedCount; i++) {
+      additionalInstruction = additionalInstruction.replaceAll(textLinkPlaceholder(i), setLinkPlaceholder(i));
+    }
+    for (let i = formBannerCount; i < pairedCount; i++) {
+      additionalInstruction = additionalInstruction.replaceAll(bannerLinkPlaceholder(i), setLinkPlaceholder(i));
+    }
+  }
 
   const outline = body.outlineJson ? tryParseOutline(body.outlineJson) : null;
   const resident = await getResidentPersona();
@@ -53,7 +83,7 @@ export async function runArticleJob(body: ArticleRequest, ctx: JobContext<Articl
     wordCount,
     modelId,
     outlineJson: body.outlineJson,
-    additionalInstruction: body.additionalInstruction,
+    additionalInstruction,
     textLinks,
     bannerLinks,
     // 行間用のスペーサー(&nbsp;)はAIに見せない(保存の直前に付け直す)
@@ -83,13 +113,18 @@ export async function runArticleJob(body: ArticleRequest, ctx: JobContext<Articl
   if (generation.truncated) send({ type: "truncated" });
   send({ type: "phase", phase: "finalizing" });
 
+  let normalized = normalizeArticleMarkdown(generation.text, { fillMissingIcon: true, normalizeHeadings: true });
+
+  // AIが目印文字列の挿入を忘れた・回数が足りない分は、セクションの切れ目へ機械的に補う
+  // (既存記事の修正では、追加指示どおりの位置・回数を尊重し、補わない)。
+  if (!body.currentArticle) {
+    const tokens = affiliateUnitTokens(textLinks.length, bannerLinks.length, pairedCount);
+    normalized = ensureAffiliatePlacements(normalized, tokens, placementsPerUnit(wordCount, tokens.length));
+  }
+
   // 目印文字列は整形の後でリンクへ戻す(ASPのURLを整形処理に通さないため)
   // 行間(ブロック間の余白)は、AIの出力を整えた後でプログラムが一括して付与する
-  const content = restoreAffiliateLinks(
-    applyArticleSpacing(normalizeArticleMarkdown(generation.text, { fillMissingIcon: true, normalizeHeadings: true })),
-    textLinks,
-    bannerLinks
-  );
+  const content = restoreAffiliateLinks(applyArticleSpacing(normalized), textLinks, bannerLinks);
 
   // SEOメタ・タグは確定した本文から生成し直す。アイキャッチ(並行実行中)もここで待ち合わせる。
   const [seo, eyecatch] = await Promise.all([generateSeoMeta(content, modelId), eyecatchPromise]);

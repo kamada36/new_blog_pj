@@ -27,9 +27,23 @@ function mapOutsideCode(text: string, fn: (segment: string) => string): string {
     .join("");
 }
 
+/** HTMLタグの属性値を読む("..." と '...' の両方)。 */
+function readHtmlAttribute(tag: string, name: string): string {
+  const match = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i").exec(tag);
+  return (match?.[1] ?? match?.[2] ?? "").replace(/&amp;/g, "&").trim();
+}
+
 function convertHtmlToMarkdown(segment: string): string {
   return segment
     .replace(/<!--[\s\S]*?-->/g, "")
+    // <img> は生HTMLのままだと本文に文字として表示されてしまう(ASPのコードに付く計測用の1x1画像など)。Markdownの画像にする。
+    // 画像のURLが読み取れないものは、表示できないので取り除く。
+    .replace(/<img\b[^>]*>/gi, (tag) => {
+      const src = readHtmlAttribute(tag, "src");
+      if (!/^https?:\/\//i.test(src)) return "";
+      const alt = readHtmlAttribute(tag, "alt").replace(/[[\]]/g, "");
+      return `![${alt}](${src.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29")})`;
+    })
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, "**$2**")
     .replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, "*$2*")

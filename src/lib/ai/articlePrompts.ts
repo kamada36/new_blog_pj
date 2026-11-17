@@ -11,12 +11,16 @@ import {
   type ResidentPersona,
 } from "./guidelines";
 import {
+  affiliateUnitTokens,
   bannerLinkPlaceholder,
   maskAffiliateLinks,
+  pairedLinkCount,
+  setLinkPlaceholder,
   textLinkPlaceholder,
   type BannerLinkInput,
   type TextLinkInput,
 } from "./affiliate";
+import { placementsPerUnit } from "./affiliatePlacement";
 import { getMaxOutputTokensForModel, isVerbosityRiskModel } from "./models";
 import { computeOutlinePlan } from "./outlinePlan";
 import { markdownToPlainText } from "./markdown";
@@ -44,27 +48,33 @@ export function buildOutlinePrompt(input: OutlinePromptInput): { system: string;
   const { h2Count, h3PerH2 } = computeOutlinePlan(wordCount);
   const hasAffiliateLinks = textLinks.length > 0 || bannerLinks.length > 0;
 
-  const textLinkItems = textLinks
-    .map(
-      (link, i) =>
-        `${i + 1}. [テキストリンク / 目印 ${textLinkPlaceholder(i)}] URL: ${link.url}${
-          link.info ? `\n   スクレイピングで取得した情報: ${link.info}` : ""
-        }`
-    )
-    .join("\n");
-  const bannerLinkItems = bannerLinks
-    .map(
-      (link, i) =>
-        `${i + 1}. [バナーリンク / 目印 ${bannerLinkPlaceholder(i)}] ${
-          link.note ? `概要: ${link.note}` : "(概要情報なし。バナー画像自体に商品情報が含まれる想定)"
-        }`
-    )
-    .join("\n");
+  // 入力順が同じテキストリンクとバナーは、同一商品・サービスの「セット」として1つの目印にまとめる。
+  // セットは、本文でバナーの直下にテキストリンクが並ぶ形に自動で展開される(片方だけ入る・離れて置かれることがない)。
+  const pairedCount = pairedLinkCount(textLinks, bannerLinks);
+  const unitCount = textLinks.length + bannerLinks.length - pairedCount;
+  const placements = placementsPerUnit(wordCount, unitCount);
+
+  const textInfo = (link: TextLinkInput) => (link.info ? `\n   スクレイピングで取得した情報: ${link.info}` : "");
+  const bannerNote = (link: BannerLinkInput) =>
+    link.note ? `概要: ${link.note}` : "(概要情報なし。バナー画像自体に商品情報が含まれる想定)";
+  const unitItems = [
+    ...Array.from(
+      { length: pairedCount },
+      (_, i) =>
+        `[セット(バナー+その直下のテキストリンク) / 目印 ${setLinkPlaceholder(i)}] テキストリンクURL: ${textLinks[i].url} / バナーの${bannerNote(bannerLinks[i])}${textInfo(textLinks[i])}`
+    ),
+    ...textLinks
+      .slice(pairedCount)
+      .map((link, k) => `[テキストリンク(単体) / 目印 ${textLinkPlaceholder(pairedCount + k)}] URL: ${link.url}${textInfo(link)}`),
+    ...bannerLinks
+      .slice(pairedCount)
+      .map((link, k) => `[バナーリンク(単体) / 目印 ${bannerLinkPlaceholder(pairedCount + k)}] ${bannerNote(link)}`),
+  ];
 
   const affiliateSection = hasAffiliateLinks
     ? `
-【アフィリエイトリンク一覧(合計${textLinks.length + bannerLinks.length}本)】
-${[textLinkItems, bannerLinkItems].filter(Boolean).join("\n")}
+【アフィリエイトリンク一覧(合計${unitCount}件)】
+${unitItems.map((item, i) => `${i + 1}. ${item}`).join("\n")}
 
 各テキストリンクのURL自体についてもGoogle検索を実行し、紹介されている商品・サービスの特徴、ユーザーのメリット、訴求ポイントを調査してください(バナーリンクはURLが無いため、概要のみを手がかりに関連性の高いセクションを判断してください)。
 
@@ -78,13 +88,17 @@ ${[textLinkItems, bannerLinkItems].filter(Boolean).join("\n")}
 【記事テーマとの整合性】
 - アフィリエイト商品は、必ずソース情報・記事タイトルのテーマに関連付けて紹介してください。商品単体の宣伝文を唐突に挿入するのではなく、「記事で扱っている悩み・話題に対する選択肢・解決策」として自然に位置づけてください。
 - アフィリエイト商品を紹介するセクションのpurpose/keyPointsには、記事全体のテーマと商品の関連性が明確にわかるように記述してください。
-- リンクのセット(またはペアを組めない単体リンク)が複数ある場合は、セットごと・単体リンクごとに、できるだけ異なるH2/H3セクションに分散して配置してください。特定の1セクションに複数のセット・複数のリンクを詰め込まないこと。
+- 複数の件(セット・単体リンク)がある場合は、件ごとに配置するセクションをずらし、同じH2セクションに複数の件を詰め込まないこと。
 
-【バナーリンクとテキストリンクのセット配置(該当する場合は厳守)】
-- テキストリンクとバナーリンクの両方が指定されており、入力順が同じもの(1本目のテキストリンクと1本目のバナーリンク、2本目同士…)がある場合、それらは同一商品・サービスを指すセットとして扱ってください。
-- セットになっている場合は、対応する2つのaffiliateNotesエントリの両方に「これはセットであること」と「両方の目印文字列(バナー側の目印文字列→テキスト側の目印文字列の順)」を明記し、本文では同じセクション内に隣接して配置する計画にしてください(セットを分割して別セクションに置いたり、間に他の内容を挟んだりする計画は禁止です)。
-- 本数が揃わずセットを組めないリンクが余る場合は、そのリンク単体として扱い、関連性の高いセクションへ個別に配置してください。
-- 目印文字列は執筆時に本文中で独立した段落として挿入されます。affiliateNotesには「どのセクションで・どんな文脈で・何のために紹介するか」を書き、「文中に埋め込む」「段落の途中に差し込む」といった配置指示は書かないでください。
+【セットと配置回数の計画(該当する場合は厳守)】
+- 「セット」の目印文字列は、執筆後に自動で「バナーの段落」と「その直下のテキストリンクの段落」に展開されます。1つの目印文字列で、バナーとテキストリンクの両方が必ず隣り合って表示されるので、バナーとテキストリンクを別々の位置に置く計画は書かないでください。
+- 各件(セット・単体リンクそれぞれ)は、記事内の別々の位置に、ちょうど${placements}回ずつ配置する計画にしてください。位置の目安は次のとおりです。
+  - 1回目: 記事の前半。読者の悩み・話題に入り、そのサービスを「解決策の選択肢のひとつ」として少し紹介した直後(最初のセクションを読み終えたあとの切れ目)。
+  - 最終回: 記事の終盤。ひととおり解説を終えたあと、「まとめ」の直前の切れ目。${
+    placements >= 3 ? "\n  - 2回目: 中盤。そのサービスと関連の深いセクションの終わりの切れ目。" : ""
+  }
+- 同じセクション(H2)の中に同じ件を複数回置かないこと。回ごとに、導入の言い回し・訴求の切り口を変える計画にすること(1回目は少し詳しく、2回目以降は短く。同じ文章の繰り返しは不可)。
+- 目印文字列は執筆時に本文中で独立した段落として挿入されます。affiliateNotesには「どのセクションの切れ目で・どんな文脈で・何のために紹介するか」を書き、「文中に埋め込む」「段落の途中に差し込む」といった配置指示は書かないでください。
 `
     : "";
 
@@ -109,7 +123,7 @@ ${OUTLINE_FORMAT}
 - researchFactsには、推測や一般論ではなくGoogle検索で確認した具体的な事実を反映すること
 ${
   hasAffiliateLinks
-    ? "- 上記アフィリエイトリンク一覧の各リンクについて、affiliateNotesに1本につき1つの文字列で挿入計画を記述し、対応する目印文字列を必ずそのままの形で含めること(URL・アンカーテキスト・バナーコードそのものは書かないこと)"
+    ? `- 上記アフィリエイトリンク一覧の各件について、affiliateNotesに1件につき1つの文字列で挿入計画(${placements}回分の配置)を記述し、対応する目印文字列を必ずそのままの形で含めること(URL・アンカーテキスト・バナーコードそのものは書かないこと)`
     : ""
 }`;
 
@@ -175,36 +189,49 @@ ${outlineJson}
     : "";
 
   const hasAffiliateLinks = textLinks.length > 0 || bannerLinks.length > 0;
-  const markers = [
-    ...textLinks.map((_, i) => `${textLinkPlaceholder(i)}(テキストリンク)`),
-    ...bannerLinks.map((_, i) => `${bannerLinkPlaceholder(i)}(バナーリンク)`),
-  ];
 
-  // テキストリンクとバナーリンクは、入力順が同じもの同士(1本目と1本目…)を同一商品・サービスの
-  // セットとして扱い、本文中でも分離させずバナー→テキストの順で隣接させる。
-  const pairCount = Math.min(textLinks.length, bannerLinks.length);
-  const pairedSetsText = Array.from({ length: pairCount }, (_, i) => {
-    return `  - セット${i + 1}: ${bannerLinkPlaceholder(i)}(上) + ${textLinkPlaceholder(i)}(下)`;
-  }).join("\n");
+  // 入力順が同じテキストリンクとバナー(1本目同士…)は、同一商品・サービスの「セット」として1つの目印にまとめる。
+  // 展開すると必ず「バナーの段落 → その直下にテキストリンクの段落」になるので、AIが片方だけ入れたり、
+  // 離して置いたりすることがない。
+  const pairedCount = pairedLinkCount(textLinks, bannerLinks);
+  const unitTokens = affiliateUnitTokens(textLinks.length, bannerLinks.length, pairedCount);
+  const isRevision = Boolean(currentArticle);
+  const placements = placementsPerUnit(wordCount, unitTokens.length);
+  const unitList = unitTokens
+    .map((token) => {
+      if (token.startsWith("@@AFFILIATE_SET_")) return `  - ${token} : セット(バナー + その直下のテキストリンク)`;
+      if (token.startsWith("@@AFFILIATE_TEXT_")) return `  - ${token} : テキストリンク(単体)`;
+      return `  - ${token} : バナーリンク(単体)`;
+    })
+    .join("\n");
 
   const affiliateSection = hasAffiliateLinks
     ? `
 【アフィリエイトリンク(目印文字列の取り扱い厳守)】
-今回使用できる目印文字列: ${markers.join(", ")}
+今回使用できる目印文字列:
+${unitList}
+
+■ 目印文字列の意味
+- セットの目印文字列は、執筆後に自動で「バナーの段落」と「その直下のテキストリンクの段落」の2つに展開されます。1つの目印文字列を置くだけで、バナーとテキストリンクの両方が必ず隣り合って表示されます。バナーやテキストリンクを別々に書いたり、他のリンクの目印文字列を間に挟んだりしないこと。
+- 単体の目印文字列は、そのリンク1本だけに展開されます。
 ${
-  pairCount > 0
+  isRevision
     ? `
-■ バナー＋テキストのセット配置(該当するセットは必ず厳守)
-以下は同一商品・サービスを指すセットです。セットになっている2つの目印文字列は絶対に分離せず、必ず隣接させて配置してください(間に他の文章・見出し・別のリンクを挟むことや、順番を入れ替えることは禁止):
-${pairedSetsText}
-- セットは「1行目にバナーリンクの目印文字列」「その直下の2行目にテキストリンクの目印文字列」の順で、空行を挟まず2行続けた1つの独立した段落として出力してください。他の文言・記号は加えないこと:
-  ${bannerLinkPlaceholder(0)}
-  ${textLinkPlaceholder(0)}
-- 上記に含まれないリンク(ペアを組めなかった単体のテキストリンク・バナーリンク)は、下記の単体配置ルールに従ってください。`
-    : ""
+■ 配置(既存記事の修正)
+- 既に本文にある目印文字列は、位置・回数ともそのまま維持してください。追加指示で明示的に求められた場合だけ、増やす・移す・減らす対応をしてください。`
+    : `
+■ 配置の回数と位置(厳守)
+- 各目印文字列は、記事内の別々の位置に、それぞれちょうど${placements}回ずつ挿入してください(1回だけで終えないこと)。
+  - 1回目: 記事の前半。読者の悩み・話題に入り、そのサービスを「解決策の選択肢のひとつ」として少し紹介した直後(最初のH2セクションを書き終えたあとの切れ目)。
+  - 最終回: 記事の終盤。ひととおり解説を終えたあと、「まとめ」の直前の切れ目。${
+    placements >= 3 ? "\n  - 2回目: 中盤。そのサービスと関連の深いセクションの終わりの切れ目。" : ""
+  }
+- 同じH2セクションの中に、同じ目印文字列を複数回置かないこと。複数の目印文字列があるときは、それぞれ別のセクションの切れ目に置き、同じ切れ目に複数を並べないこと。
+- 構成案(affiliateNotes)に配置の指定があれば、その位置に従うこと。
+- 2回目以降は、紹介の導入文の言い回し・訴求の切り口を変えること(同じ文章の繰り返しは禁止。1回目は少し詳しく、2回目以降は短く)。`
 }
-- 構成案(affiliateNotes)で指定された位置に、対応する目印文字列をそのままの形で本文中に過不足なく1回ずつ挿入してください(登場させ忘れ・重複挿入は禁止)。
-- セットを組んでいない単体の目印文字列は、「それ専用の独立した1つの段落」に、目印文字列だけを入れて配置してください(前後は空行)。本文・説明文や、リスト・表・囲み(>)の中には混在させないでください。
+- 「追加指示」の中に目印文字列がある場合は、指示された位置・回数のとおりに本文へ挿入してください。
+- 目印文字列は、「それ専用の独立した1つの段落」に、目印文字列だけを入れて配置してください(前後は空行)。本文・説明文や、リスト・表・囲み(>)の中には混在させないでください。
 - リンクを入れたい流れが文章の途中に来る場合は、いったんその段落を終えてから(空行を入れてから)目印文字列の段落を挿入し、その次から新しい段落を始めてください。段落の途中に目印文字列を差し込むことは禁止です。
 - 目印文字列の前後に、[ ]( ) のリンク記法・画像記法・「PR」「広告」などのラベル・リンクの見出し文言を、自分で作成して付け加えないでください。目印文字列だけを置けば、後で自動的にASPから提供された元のリンク・バナーへ一切の改変なく置き換わります。目印文字列自体を書き換えたり、周囲に余計な記法を加えたりすると、表示崩れやASP規約違反の原因になるため絶対に行わないでください。
 - 【厳禁:二重リンク化】本文中(特に「現在の記事全文」を修正する場合)に、目印文字列ではなく既に展開済みのリンク([テキスト](URL) や [![](画像URL)](URL))がある場合、それは既に完成した1つの部品です。一字一句変更せずそのままの位置に残し、新たなリンク記法でさらに囲まないでください。
@@ -272,7 +299,9 @@ ${outlineSection}${affiliateSection}
 ${outputContract}`;
 
   // 「現在の記事全文」には展開済みの実URL・バナーが入っているため、AIに見せる前に目印文字列へ戻す。
-  const maskedCurrentArticle = currentArticle ? maskAffiliateLinks(currentArticle, textLinks, bannerLinks) : currentArticle;
+  const maskedCurrentArticle = currentArticle
+    ? maskAffiliateLinks(currentArticle, textLinks, bannerLinks, pairedCount)
+    : currentArticle;
 
   let prompt: string;
   if (additionalInstruction && maskedCurrentArticle) {
@@ -288,7 +317,7 @@ ${additionalInstruction}
 - 指示と無関係な見出し・段落・吹き出しは、内容を変えずにそのまま維持してください(書き直して言い回しを変えるのは禁止)。
 - 修正後の記事の「全文」を、先頭から末尾まで省略せずに出力してください。差分やコメントだけを返すのは禁止です。
 - 構成案の見出し構成を崩さないでください。既存の吹き出しの記法(emotion や icon_url の属性)もそのまま維持してください。
-- 文中に \`@@AFFILIATE_\` で始まる目印文字列がある場合は、一字一句変えずにそのままの位置・回数で残してください(削除・言い換え・移動は禁止です)。
+- 文中に \`@@AFFILIATE_\` で始まる目印文字列がある場合は、一字一句変えずにそのままの位置・回数で残してください(削除・言い換え・移動は禁止です)。ただし、上の【追加指示】の中に目印文字列があり、その挿入が求められている場合は、指示された位置・回数どおりに、独立した段落として挿入してください。
 - 展開済みのリンク([テキスト](URL) や [![](画像URL)](URL))が残っている場合も、一字一句変えずにそのままの位置に残してください。新たなリンク記法でさらに囲むことは禁止です。`;
   } else if (additionalInstruction) {
     prompt = `追加指示: ${additionalInstruction}\nこれに基づいて記事を生成してください。`;
