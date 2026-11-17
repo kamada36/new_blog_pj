@@ -711,6 +711,25 @@ body {
   white-space: pre-wrap;
 }
 
+/* アフィリエイトのバナー・テキストリンクだけの段落(ArticleBody の affiliateParagraphParts)は、記事の左右中央に寄せる。
+   バナーの画像は display:block なので、text-align ではなく margin:auto で中央にする。
+   計測用の1x1画像は、読み込みは残したまま、段落に空白行を作らないよう、位置を外して1pxにする。 */
+.article-body p.article-affiliate {
+  position: relative;
+  text-align: center;
+}
+
+.article-body p.article-affiliate a > img {
+  margin-inline: auto;
+}
+
+.article-body p.article-affiliate .article-affiliate-pixel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .article-body ul,
 .article-body ol {
   padding-left: 1.4em;

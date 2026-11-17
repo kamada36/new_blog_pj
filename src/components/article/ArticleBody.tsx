@@ -9,6 +9,7 @@ import type { Components } from "react-markdown";
 import { IconMug } from "@/components/icons/CafeIcons";
 import { BALLOON_ICON_ALT_PREFIX, expandShortcodes, type ShortcodePreset } from "@/lib/shortcodes";
 import { hasMyLinkBox, parseMyLinkBoxId } from "@/lib/myLinkBox";
+import { isAffiliateUrl } from "@/lib/affiliateLinks";
 import { MyLinkBoxLoader } from "./MyLinkBoxLoader";
 
 type ImgProps = { src?: string; alt?: string };
@@ -25,6 +26,36 @@ const BODY_IMAGE_SIZES = "(min-width: 1024px) 700px, 100vw";
 /** 改行だけの空白テキストノードを除いた、実質的な子要素だけを取り出す。 */
 function significantChildren(children: ReactNode): ReactNode[] {
   return Children.toArray(children).filter((child) => !(typeof child === "string" && child.trim() === ""));
+}
+
+/**
+ * 段落の中身が「アフィリエイトのリンク(バナー・テキスト)だけ」なら、描画する子要素を返す(そうでなければnull)。
+ * ASPの計測URLへのリンクと、それに続く計測用の1x1画像(リンクの外の画像)だけで構成された段落が対象で、
+ * 文章の途中にあるリンクは対象外。計測用の画像は、読み込みは残したまま、段落に余計な空白行を作らないよう包んで目立たなくする。
+ */
+function affiliateParagraphParts(parts: ReactNode[]): ReactNode[] | null {
+  let hasAffiliateLink = false;
+  const result: ReactNode[] = [];
+  for (const part of parts) {
+    if (!isValidElement(part)) return null;
+    const props = part.props as { href?: unknown; src?: unknown };
+    if (typeof props.href === "string") {
+      if (!isAffiliateUrl(props.href)) return null;
+      hasAffiliateLink = true;
+      result.push(part);
+    } else if (typeof props.src === "string") {
+      result.push(
+        <span key={part.key} className="article-affiliate-pixel">
+          {part}
+        </span>
+      );
+    } else if (part.type === "br") {
+      result.push(part);
+    } else {
+      return null;
+    }
+  }
+  return hasAffiliateLink ? result : null;
 }
 
 /** blockquoteの最初の段落が「吹き出しアイコン専用画像」だけを含む場合、そのimg要素を取り出す。 */
@@ -137,6 +168,10 @@ export function ArticleBody({
         const widgetId = parseMyLinkBoxId(parts.join(""));
         if (widgetId) return <div className="article-mylinkbox" data-vc_mylinkbox_id={widgetId} />;
       }
+
+      // アフィリエイトのバナー・テキストリンクだけの段落は、記事の中央に寄せて表示する(.article-affiliate)
+      const affiliateParts = affiliateParagraphParts(parts);
+      if (affiliateParts) return <p className="article-affiliate">{affiliateParts}</p>;
 
       // 段落の中身がリンク1つだけで、それが記事のカード情報を持つなら、カードに置き換える
       if (linkCards) {
