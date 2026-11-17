@@ -9,6 +9,8 @@ const textLinkSchema = z.object({
   url: z.string().trim().max(2000),
   anchorText: z.string().trim().max(300),
   info: z.string().max(6000).optional(),
+  /** ASPのテキストリンクのコードに付く、計測用の1x1ピクセル画像のURL */
+  pixelUrl: z.string().trim().max(2000).optional(),
 });
 
 const bannerLinkSchema = z.object({
@@ -22,7 +24,11 @@ const linksFields = {
     .array(textLinkSchema)
     .max(MAX_LINKS_PER_TYPE)
     .default([])
-    .transform((links) => links.filter((link) => /^https?:\/\//i.test(link.url))),
+    .transform((links) =>
+      links
+        .filter((link) => /^https?:\/\//i.test(link.url))
+        .map((link) => ({ ...link, pixelUrl: link.pixelUrl && /^https?:\/\//i.test(link.pixelUrl) ? link.pixelUrl : undefined }))
+    ),
   bannerLinks: z
     .array(bannerLinkSchema)
     .max(MAX_LINKS_PER_TYPE)

@@ -8,6 +8,7 @@
 //   スペーサー1つ  → ブロック間が約74px(≒2〜3行)
 //   スペーサー2つ  → 約127px(≒4行)。見出しの上はh2/h3のmargin-topも加わり約140〜150px(≒4〜5行)
 // 行間の量を変えたいときは、下の GAP の個数を変える。
+import { isAffiliateUrl } from "../affiliateLinks";
 
 /** ブロックの間に入れるスペーサー(&nbsp;だけの段落)の個数 */
 export const GAP = {
@@ -25,9 +26,20 @@ export const GAP = {
 
 export const SPACER = "&nbsp;";
 
-type BlockKind = "heading" | "balloon" | "list" | "continuation" | "other";
+type BlockKind = "heading" | "balloon" | "list" | "continuation" | "affiliateBanner" | "affiliateText" | "other";
+
+// バナー([![alt](画像)](リンク) で始まる段落)と、その直下のテキストリンク([表示テキスト](リンク) だけの段落)は、
+// 1つのセット。間にスペーサーを入れず、すぐ下に続けて見せる(目印文字列の段階でも同じ扱いにする)。
+const BANNER_BLOCK = /^\[\s*!\[[^\]]*\]\(\s*https?:[^)\s]+\s*\)\s*\]\(\s*(https?:[^)\s]+)\s*\)/;
+const TEXT_LINK_BLOCK = /^\[[^\]]+\]\(\s*(https?:[^)\s]+)\s*\)(?:!\[[^\]]*\]\([^)]*\))*\s*$/;
 
 function classify(block: string): BlockKind {
+  if (/^@@AFFILIATE_BANNER_\d+@@\s*$/.test(block)) return "affiliateBanner";
+  if (/^@@AFFILIATE_TEXT_\d+@@\s*$/.test(block)) return "affiliateText";
+  const bannerHref = BANNER_BLOCK.exec(block)?.[1];
+  if (bannerHref && isAffiliateUrl(bannerHref)) return "affiliateBanner";
+  const textHref = TEXT_LINK_BLOCK.exec(block)?.[1];
+  if (textHref && isAffiliateUrl(textHref)) return "affiliateText";
   if (/^#{2,3}[ \t]/.test(block)) return "heading";
   if (/^\[sc\s[^\n]*\]\s*$/.test(block)) return "balloon";
   if (/^[ \t]{2,}\S|^\t/.test(block)) return "continuation"; // リストの続きなど、字下げされたブロック
@@ -61,6 +73,8 @@ function splitBlocks(text: string): string[] {
 function gapBetween(prev: BlockKind, next: BlockKind): number {
   // 続き・連続するリストの項目どうしは、同じひとまとまりとして間を空けない
   if (next === "continuation") return 0;
+  // アフィリエイトのバナーと、その直下のテキストリンクは、セットとして間を空けない
+  if (prev === "affiliateBanner" && next === "affiliateText") return 0;
   if (prev === "list" && next === "list") return 0;
   if (next === "heading") return GAP.beforeHeading;
   if (prev === "heading") return GAP.afterHeading;

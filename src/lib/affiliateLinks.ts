@@ -86,6 +86,11 @@ export function aspLabel(asp: string): string {
   return ASP_RULES.find((rule) => rule.asp === asp)?.label ?? asp;
 }
 
+/** URLがいずれかのASPのアフィリエイトリンク(計測URL)か。AIへの指示文に貼られたASPのコードを見分けるのに使う。 */
+export function isAffiliateUrl(rawUrl: string): boolean {
+  return classify(rawUrl) !== null;
+}
+
 export interface ExtractedAffiliateLink {
   url: string;
   asp: string;

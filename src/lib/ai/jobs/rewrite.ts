@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { contentPath } from "@/lib/slug";
 import {
+  bannerLinkPlaceholder,
+  extractAffiliateCode,
+  restoreAffiliateLinks,
+  textLinkPlaceholder,
+} from "@/lib/ai/affiliate";
+import {
   applyRewrite,
   finalizeRewrite,
   getResidentPersona,
@@ -56,14 +62,25 @@ export async function runRewriteJob(body: RewriteRequest, ctx: JobContext<Rewrit
   const resident = await getResidentPersona();
   // AI生成記事は行間用のスペーサー(&nbsp;)を含む。AIには見せず、リライト後に付け直す(含まない記事には付けない)。
   const hadSpacers = hasSpacers(article.contentMarkdown);
+
+  // 追加指示にASPのコード(<a href=計測URL>…</a> と計測用の <img>)が貼られていたら、AIに見せる前に目印文字列へ置き換え、
+  // リライト後にプログラムが元のまま差し込む。コードをそのまま見せると、AIがURLを書き換えたり、Markdownにできない <img> を
+  // 生HTMLのまま本文に残したりする(このブログは生HTMLを描画せず、文字としてそのまま表示される)。
+  const affiliate = extractAffiliateCode(body.instruction ?? "");
+  const affiliateTokens = [
+    ...affiliate.textLinks.map((_, i) => ({ token: textLinkPlaceholder(i), kind: "text" as const })),
+    ...affiliate.bannerLinks.map((_, i) => ({ token: bannerLinkPlaceholder(i), kind: "banner" as const })),
+  ];
+
   const { system, prompt } = buildRewritePrompt({
     title: article.title,
     contentMarkdown: hadSpacers ? stripSpacers(article.contentMarkdown) : article.contentMarkdown,
-    instruction: body.instruction,
+    instruction: body.instruction ? affiliate.text : undefined,
     internalLinks,
     internalLinkFormat: body.internalLinkFormat,
     insertUpdatedNote: body.insertUpdatedNote,
     resident,
+    affiliateTokens,
   });
 
   // 元の本文は、最初のリライト実行時にだけ退避する(連続リライトしても最初の原文を保つ)
@@ -93,9 +110,19 @@ export async function runRewriteJob(body: RewriteRequest, ctx: JobContext<Rewrit
 
     const { content, summary } = splitContentAndSummary(generation.text);
     const normalized = normalizeArticleMarkdown(content, { fillMissingIcon: false, normalizeHeadings: false });
-    const rewritten = hadSpacers ? applyArticleSpacing(normalized) : normalized;
+    const spaced = hadSpacers ? applyArticleSpacing(normalized) : normalized;
 
-    if (!rewritten.trim()) throw new Error("AIの応答が空でした。別のモデルで再度お試しください。");
+    if (!spaced.trim()) throw new Error("AIの応答が空でした。別のモデルで再度お試しください。");
+    // 指示に貼られたアフィリエイトのリンクが、AIの出力から落ちていたら、保存しない(リンクの無いまま公開するのを避ける)
+    const missingTokens = affiliateTokens.filter(({ token }) => !spaced.includes(token));
+    if (missingTokens.length > 0) {
+      throw new Error(
+        "追加指示に貼られたアフィリエイトのリンクが、AIの出力に含まれていなかったため、保存しませんでした(元の記事はそのままです)。もう一度お試しいただくか、別のモデルをお試しください。"
+      );
+    }
+    // 目印文字列は、整形・行間の付与の後で、ASPから提供された元のリンクへ戻す(ASPのURLを整形処理に通さない)。
+    // リライトでは、セットは組まない(バナーは既に本文にあり、指示の目印は個別に置かれる)。
+    const rewritten = restoreAffiliateLinks(spaced, affiliate.textLinks, affiliate.bannerLinks, 0);
     // 公開中の記事を壊さないための安全弁。出力が上限で途切れた/大幅に短くなった結果は保存しない。
     if (generation.truncated) {
       throw new Error("出力が上限に達して途中で終了したため、保存しませんでした(元の記事はそのままです)。別のモデルをお試しください。");
