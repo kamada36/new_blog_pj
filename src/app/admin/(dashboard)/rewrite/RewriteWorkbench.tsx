@@ -380,6 +380,10 @@ export function RewriteWorkbench({
                   disabled={busyId !== null}
                   className={`${INPUT_CLASS} mt-3`}
                 />
+                <p className="mt-1 text-xs text-foreground-muted">
+                  ASPのアフィリエイトコード(&lt;a href=…&gt;…&lt;/a&gt; と計測用の &lt;img&gt;)は、指示の中にそのまま貼り付けられます。
+                  AIには見せず、元のリンクのまま改変なく本文へ差し込みます。「バナーの直下に入れる」「何度か入れる」などの位置の指示も書けます。
+                </p>
 
                 <LinkSuggestionsPanel
                   articleId={row.id}

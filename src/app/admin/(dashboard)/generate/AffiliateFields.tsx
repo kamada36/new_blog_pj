@@ -2,6 +2,7 @@
 
 import {
   MAX_LINKS_PER_TYPE,
+  parseTextLinkHtml,
   validateBannerHtml,
   type BannerLinkInput,
   type TextLinkInput,
@@ -34,24 +35,40 @@ export function AffiliateFields({
   const updateBanner = (index: number, patch: Partial<BannerLinkInput>) =>
     onBannerLinksChange(bannerLinks.map((link, i) => (i === index ? { ...link, ...patch } : link)));
 
+  // URL欄に、ASPのテキストリンクのコード(<a href="...">表示テキスト</a> と計測用の <img>)を貼られたら、
+  // URL・リンクテキスト・計測用ピクセルに振り分ける(ブラウザは、1行の入力欄に貼られた改行を取り除く)。
+  const handleUrlChange = (index: number, value: string) => {
+    const parsed = /<a\b/i.test(value) ? parseTextLinkHtml(value) : null;
+    if (parsed) {
+      updateText(index, { url: parsed.url, anchorText: parsed.anchorText, pixelUrl: parsed.pixelUrl ?? "", info: "" });
+    } else {
+      updateText(index, { url: value, info: "" });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <p className="text-xs text-foreground-muted">
         AIにはURL・バナーのコードを見せず、本文中の「置きたい位置」だけを決めさせ、生成後に元のリンクをそのまま差し込みます。
-        入力順が同じテキストリンクとバナーは「同一商品のセット」として隣り合わせに配置されます。
+        入力順が同じテキストリンクとバナーは「同一商品のセット」になり、記事内の複数の箇所(前半・まとめの前など)に、
+        バナーの直下にテキストリンクが並ぶ形で挿入されます。
       </p>
 
       <div>
         <p className="text-sm font-semibold">テキストリンク(最大{MAX_LINKS_PER_TYPE}本)</p>
+        <p className="mt-1 text-xs text-foreground-muted">
+          URLを入力するか、ASPからコピーしたコード(&lt;a href=…&gt;…&lt;/a&gt; と計測用の &lt;img&gt;)をURL欄にそのまま貼り付けてください。
+          URL・リンクテキスト・計測用の画像が自動で振り分けられ、計測用の画像もリンクと一緒に記事へ入ります。
+        </p>
         <div className="mt-2 flex flex-col gap-3">
           {textLinks.map((link, i) => (
             <div key={i} className="rounded-xl border border-border p-3">
               <div className="flex gap-2">
                 <input
-                  type="url"
+                  type="text"
                   value={link.url}
-                  onChange={(e) => updateText(i, { url: e.target.value, info: "" })}
-                  placeholder="https://example.com/product/..."
+                  onChange={(e) => handleUrlChange(i, e.target.value)}
+                  placeholder="https://example.com/product/... (またはASPのコードを貼り付け)"
                   disabled={disabled}
                   className={INPUT_CLASS}
                 />
@@ -81,6 +98,9 @@ export function AffiliateFields({
                 disabled={disabled}
                 className={`${INPUT_CLASS} mt-2`}
               />
+              {link.pixelUrl && (
+                <p className="mt-2 text-xs text-foreground-muted">計測用の画像を検出しました(リンクと一緒に記事へ入ります)。</p>
+              )}
               {link.info && (
                 <p className="mt-2 line-clamp-2 text-xs text-foreground-muted">取得した情報: {link.info}</p>
               )}

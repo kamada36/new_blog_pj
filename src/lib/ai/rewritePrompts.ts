@@ -64,10 +64,28 @@ export interface RewritePromptInput {
   /** 本文の先頭に「最終更新日」の1行を入れる(既にあれば日付を更新する) */
   insertUpdatedNote: boolean;
   resident?: ResidentPersona;
+  /**
+   * 追加指示に貼られたASPのコードを置き換えた、目印文字列の一覧(src/lib/ai/affiliate.ts の extractAffiliateCode)。
+   * 追加指示の中では、コードの代わりに目印文字列が書かれている。
+   */
+  affiliateTokens?: { token: string; kind: "text" | "banner" }[];
+}
+
+/** 追加指示の中の目印文字列(アフィリエイトのリンク)の扱い。実際のリンクは、リライト後にプログラムが元のまま差し込む。 */
+function buildAffiliateTokenRules(tokens: NonNullable<RewritePromptInput["affiliateTokens"]>): string[] {
+  if (tokens.length === 0) return [];
+  const list = tokens.map(({ token, kind }) => `${token}(${kind === "banner" ? "バナーリンク" : "テキストリンク"})`).join("、");
+  return [
+    `追加指示の中の \`@@AFFILIATE_\` で始まる目印文字列(${list})は、後でプログラムが、ASPから提供された元のリンク・バナーへ一切の改変なく置き換えます。追加指示で求められた位置・回数のとおりに、本文へ挿入してください。目印文字列の中身(URL・表示テキスト・バナーコード)を推測して書かないこと。`,
+    "目印文字列は、「それ専用の独立した1つの段落」に、目印文字列だけを書くこと(前後は空行。文章の途中・リスト・表・囲み(>)の中には入れない)。目印文字列を書き換える・省略する・説明文に言い換える・前後に [ ]( ) や <a> <img> などの記法・タグを付け足すことは禁止です。",
+    "テキストリンクの目印文字列を、既存のバナーの直下に置くよう求められた場合は、バナーの段落のすぐ下(次の段落)に置くこと。間に文章・見出しを挟まないこと。",
+    "既にMarkdownに展開済みのアフィリエイトのリンク・バナー(「[テキスト](URL)」「[![](画像URL)](URL)」と、それに続く計測用の画像「![](URL)」)は、一字一句変えずにそのままの位置に残すこと。新たなリンク記法で囲み直さない・URLを書き直さないこと。",
+  ];
 }
 
 export function buildRewritePrompt(input: RewritePromptInput): { system: string; prompt: string } {
-  const { title, contentMarkdown, instruction, internalLinks, internalLinkFormat, insertUpdatedNote, resident } = input;
+  const { title, contentMarkdown, instruction, internalLinks, internalLinkFormat, insertUpdatedNote, resident, affiliateTokens } =
+    input;
   const hasInstruction = Boolean(instruction?.trim());
   const today = formatJapaneseDate();
 
@@ -77,7 +95,7 @@ export function buildRewritePrompt(input: RewritePromptInput): { system: string;
     "[vc-mylinkbox id=\"数字\"] だけの独立した行(商品リンクの表示位置)は、一字一句変えず、前後の空行も含めてそのままの位置に残すこと。削除・移動・統合・説明文の追加をしないこと。",
     "吹き出し([sc name=\"...\" ... talk=\"...\"])の台詞(talk)は、キャラクターの口調(hukidasi1=敬語のやさしい語りかけ、hukidasi2=タメ口)を保ったまま磨いてよい。talkの中に半角の「\"」「'」「[」「]」を入れないこと(引用は全角の「」を使う)。吹き出しの数や並び順は変えないこと。",
     "「>」の囲み(吹き出しアイコン画像付きの囲みを含む)は、囲みの構造を保ったまま中身の文章だけを磨くこと。",
-    "本文中にHTMLタグが混ざっている場合は、同じ意味のMarkdown記法に置き換えてよい。置き換えられないものはそのまま残すこと。",
+    "本文中にHTMLタグが混ざっている場合は、同じ意味のMarkdown記法に置き換えてよい(<a href>は[テキスト](URL)に、<img>は![alt](URL)に)。置き換えられないものはそのまま残すこと。このブログは生のHTMLを表示できず、残ったタグは文字としてそのまま表示される点に注意すること。",
     insertUpdatedNote
       ? `本文の先頭に、独立した1つの段落として「【最終更新日: ${today}】」の1行を置くこと。既に同様の「最終更新日」の行が先頭にある場合は、重複させず日付だけを${today}に更新すること。`
       : "「最終更新日」などの日付の行を新たに追加しないこと(既にある場合はそのまま残す)。",
@@ -87,6 +105,7 @@ export function buildRewritePrompt(input: RewritePromptInput): { system: string;
   if (hasInstruction) {
     rules.push("上記の「この記事固有の追加指示」は、他のルールと矛盾しない範囲で必ず反映すること。");
   }
+  rules.push(...buildAffiliateTokenRules(affiliateTokens ?? []));
   if (internalLinks.length > 0) {
     rules.push(
       "上記の「挿入する内部リンク」は必ず全件挿入すること。リンクの案内文や囲みの追加は、構造保持のルールの例外として認める。"
