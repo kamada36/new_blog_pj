@@ -5,6 +5,7 @@ import { StaticPageView } from "@/components/page/StaticPageView";
 import { getArticleBySlug, getPageBySlug, getShortcodes } from "@/lib/queries";
 import { contentPath, decodeSlug } from "@/lib/slug";
 import { loadImageSizes } from "@/lib/imageSize";
+import { socialMetadata } from "@/lib/ogp/metadata";
 
 // 記事も固定ページも、サイト直下の /{slug}/ で表示する(現行WordPressのURLと同じ形のまま移行して、
 // 検索順位の引き継ぎを転送(リダイレクト)に頼らないため)。公開記事を先に探し、無ければ固定ページを探す。
@@ -30,22 +31,29 @@ export async function generateMetadata({ params }: PageProps<"/[slug]">): Promis
       description,
       keywords: article.metaKeywords || undefined,
       alternates: { canonical: `${siteUrl}${contentPath(article.slug)}` },
-      openGraph: {
+      ...socialMetadata({
         title,
         description,
         type: "article",
         url: `${siteUrl}${contentPath(article.slug)}`,
-        images: article.coverImageUrl ? [article.coverImageUrl] : undefined,
-      },
+        imageUrl: article.coverImageUrl,
+      }),
     };
   }
 
   const page = await getPageBySlug(slug);
   if (!page) return {};
+  const pageTitle = page.metaTitle || page.title;
   return {
-    title: page.metaTitle || page.title,
+    title: pageTitle,
     description: page.metaDescription,
     alternates: { canonical: `${siteUrl}${contentPath(page.slug)}` },
+    ...socialMetadata({
+      title: pageTitle,
+      description: page.metaDescription,
+      type: "website",
+      url: `${siteUrl}${contentPath(page.slug)}`,
+    }),
   };
 }
 
