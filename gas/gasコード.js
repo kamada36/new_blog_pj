@@ -2211,9 +2211,11 @@ function setupSpreadsheet() {
       ["5. システムが自動的に投稿予定時間になった投稿を実行します。"],
       [""],
       ["CSVフォーマット:"],
-      ["投稿日, 投稿時間枠, 投稿内容, 投稿先_ｘ, 投稿先_threads"],
-      ["例: 2025-06-30, 1, おはようございます！#朝, 1, 1"],
-      ["※投稿先指定( 0 or 1 )は入れなければ設定されたデフォルトで入ります。"],
+      ["投稿日, 投稿時間枠, 投稿内容, 投稿先_ｘ, 投稿先_threads, 予定投稿時間(HH:mm), ツリー(0 or 1), サイトID"],
+      ["例: 2025-06-30, 1, おはようございます！#朝, 1, 1, 07:45, 0, abc123"],
+      ["※右側の列は省略できます。投稿先指定( 0 or 1 )は入れなければ設定されたデフォルトで入ります。"],
+      ["※予定投稿時間を入れた行は、ランダム設定されません。ツリーが 1 の行は、直前のメイン投稿への返信になります。"],
+      ["※サイトIDが登録済みの行は取り込まれません(二重登録の防止)。"],
       ["※日付は必ず「yyyy-MM-dd」の形で入れてください。"],
       [""],
       ["トラブルシューティング:"],
@@ -2222,7 +2224,15 @@ function setupSpreadsheet() {
       ["- システムのログは「ログ」シートで確認できます。"]
     ];
     helpSheet.getRange(2, 1, helpText.length, 1).setValues(helpText).setWrap(true);
-    helpSheet.getRange("A2,A8,A14").setFontWeight("bold").setFontColor(colors.titleText);
+    // 見出し(末尾が「:」の行)を太字にする。getRange に "A2,A8,A14" のようなカンマ区切りは指定できない(範囲が見つからない
+  // エラーになる)ため、getRangeList で指定する。行番号は、文面を直しても合うよう、見出しの位置から求める。
+    const headingCells = [];
+    helpText.forEach(function (row, index) {
+      if (String(row[0]).slice(-1) === ':') headingCells.push('A' + (index + 2));
+    });
+    if (headingCells.length > 0) {
+      helpSheet.getRangeList(headingCells).setFontWeight("bold").setFontColor(colors.titleText);
+    }
     helpSheet.setColumnWidth(1, 800); // A列
   }
 
