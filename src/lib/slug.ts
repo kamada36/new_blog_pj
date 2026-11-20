@@ -25,6 +25,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   "profile",
   "archive",
   "feed",
+  "ogp-image",
   "sitemap.xml",
   "robots.txt",
   "sitemap.html",

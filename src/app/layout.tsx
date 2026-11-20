@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Dancing_Script } from "next/font/google";
 import { getSiteSetting } from "@/lib/queries";
+import { defaultOgpImage } from "@/lib/ogp/metadata";
 import "./globals.css";
 
 // 日本語のWebフォント(Noto Sans JPなど)は、字形ごとに数十〜百以上のファイルへ分割されていて、ページが使う文字の分だけ
@@ -17,15 +18,35 @@ const brandFont = Dancing_Script({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+const SITE_TITLE = "レジリエンサーCafe";
+const SITE_DESCRIPTION = "この一杯から始まる、IT転職への道しるべ。未経験からのIT転職・キャリアの考え方を発信するブログです。";
+
 export async function generateMetadata(): Promise<Metadata> {
   const { faviconUrl } = await getSiteSetting();
   return {
     metadataBase: new URL(siteUrl),
     title: {
-      default: "レジリエンサーCafe",
-      template: "%s | レジリエンサーCafe",
+      default: SITE_TITLE,
+      template: `%s | ${SITE_TITLE}`,
     },
-    description: "この一杯から始まる、IT転職への道しるべ。未経験からのIT転職・キャリアの考え方を発信するブログです。",
+    description: SITE_DESCRIPTION,
+    // SNSで共有したときのカード(トップページ・一覧など、個別に指定しないページの共通設定)。
+    // 画像は、ヒーローに似せて自動生成する共通画像(app/ogp-image/route.tsx)。
+    // X(Twitter)は og:* でも読めるが、大きい画像のカードにするため twitter:card を明示する。
+    openGraph: {
+      type: "website",
+      siteName: SITE_TITLE,
+      locale: "ja_JP",
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      images: [defaultOgpImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      images: [defaultOgpImage.url],
+    },
     // app/favicon.ico を置くと設定値と並んで2本出力されブラウザの選択が不定になるため、
     // 既定のファビコンは public に置き、リンクを常に1本だけにする
     icons: { icon: faviconUrl ?? "/favicon-default.ico" },
