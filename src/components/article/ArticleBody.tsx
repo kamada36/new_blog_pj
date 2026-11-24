@@ -10,6 +10,7 @@ import { IconMug } from "@/components/icons/CafeIcons";
 import { BALLOON_ICON_ALT_PREFIX, expandShortcodes, type ShortcodePreset } from "@/lib/shortcodes";
 import { hasMyLinkBox, parseMyLinkBoxId } from "@/lib/myLinkBox";
 import { isAffiliateUrl } from "@/lib/affiliateLinks";
+import { toInternalPath } from "@/lib/internalLink";
 import { MyLinkBoxLoader } from "./MyLinkBoxLoader";
 
 type ImgProps = { src?: string; alt?: string };
@@ -179,7 +180,9 @@ export function ArticleBody({
         if (only && others.length === 0 && isValidElement(only)) {
           const href = (only.props as { href?: unknown }).href;
           const card = typeof href === "string" ? linkCards[href] : undefined;
-          if (card) return <LinkCard href={href as string} card={card} />;
+          // 本文が自サイトの絶対URLで書かれていても、カードのリンク先はサイト内のパスにする
+          const path = card && typeof href === "string" ? (toInternalPath(href) ?? href) : null;
+          if (card && path) return <LinkCard href={path} card={card} />;
         }
       }
       return <p>{children}</p>;

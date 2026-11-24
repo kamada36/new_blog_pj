@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decodeSlug } from "@/lib/slug";
+import { toInternalPath } from "@/lib/internalLink";
 import type { LinkCards } from "@/components/article/ArticleBody";
 
 // 記事内リンクのブログカード表示。
@@ -12,16 +13,22 @@ import type { LinkCards } from "@/components/article/ArticleBody";
 
 const MAX_CARDS_PER_PAGE = 20;
 
-/** 行全体が [テキスト](/slug/) だけの行。キャプチャは括弧内のパス(本文のhrefそのもの)。 */
-const STANDALONE_INTERNAL_LINK = /^[ \t]*\[[^\]\n]*\]\((\/[^/\s)#?]+\/?)\)[ \t]*$/gm;
+/** 行全体が [テキスト](リンク) だけの行。キャプチャは括弧内のリンク(本文のhrefそのもの。/slug/ でも、自サイトの絶対URLでもよい)。 */
+const STANDALONE_LINK = /^[ \t]*\[[^\]\n]*\]\(([^\s)]+)\)[ \t]*$/gm;
+
+/** 記事ページのパス(/slug/ だけ。カテゴリなど階層のあるパスは対象外)なら、スラッグを返す。 */
+const ARTICLE_PATH = /^\/([^/\s#?]+)\/?$/;
 
 /** Markdown本文の「リンクだけの行」のうち、公開記事を指すものの情報を、本文のhrefごとにまとめて返す。 */
 export async function loadLinkCards(markdown: string): Promise<LinkCards> {
   const slugByHref = new Map<string, string>();
-  for (const match of markdown.matchAll(STANDALONE_INTERNAL_LINK)) {
+  for (const match of markdown.matchAll(STANDALONE_LINK)) {
     const href = match[1];
+    const path = toInternalPath(href);
+    const encodedSlug = path ? ARTICLE_PATH.exec(path)?.[1] : undefined;
+    if (!encodedSlug) continue;
     if (slugByHref.size >= MAX_CARDS_PER_PAGE) break;
-    slugByHref.set(href, decodeSlug(href.replace(/^\/|\/$/g, "")));
+    slugByHref.set(href, decodeSlug(encodedSlug));
   }
   if (slugByHref.size === 0) return {};
 
