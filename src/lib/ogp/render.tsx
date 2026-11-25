@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
-import { getSiteSetting } from "@/lib/queries";
+import { OGP_HEIGHT, OGP_WIDTH } from "./size";
 
 /**
  * サイト共通のOGP画像(SNSでURLを共有したときのサムネイル)。1200×630。
@@ -10,10 +10,8 @@ import { getSiteSetting } from "@/lib/queries";
  * 画像が未設定でも、地の色と文字だけで表示される。
  *
  * ブラウザのスクリーンショットは、サーバー(Netlifyの関数)では撮れないため、ヒーローと同じ素材から組み立てている。
+ * このファイルは画像を描くだけ。保存と使い回しは siteImage.ts が行う。
  */
-
-export const OGP_WIDTH = 1200;
-export const OGP_HEIGHT = 630;
 
 const CATCHPHRASE = "この一杯から始まる、IT転職への道しるべ";
 const BRAND_MAIN = "Resilient-cer";
@@ -31,10 +29,6 @@ const COLOR = {
 
 /** 外部の読み込みで待たされすぎないための上限(ミリ秒) */
 const FETCH_TIMEOUT_MS = 6000;
-
-/** 生成した画像のキャッシュ(同じサーバーが動いている間だけ。SNSのクローラーが続けて取りに来ても、作り直さない) */
-const CACHE_TTL_MS = 60 * 60 * 1000;
-let cached: { expiresAt: number; body: ArrayBuffer } | null = null;
 
 /** Googleフォントから、必要な文字だけを含む小さなフォントを取る。取れなければ null(その場合は標準フォントで描く)。 */
 const fontCache = new Map<string, ArrayBuffer>();
@@ -104,14 +98,22 @@ function PeepholeCircle({ photo, left, top, size }: { photo: string | null; left
   );
 }
 
-async function render(): Promise<ArrayBuffer> {
-  const setting = await getSiteSetting();
-  const photoSource = setting.heroBackgroundUrl ?? setting.heroBackgroundMobileUrl;
+/** 画像の素材(管理画面の設定のヒーロー画像) */
+export type OgpSources = {
+  photoUrl: string | null;
+  resilientUrl: string | null;
+  aikoUrl: string | null;
+};
 
+/**
+ * OGP画像をJPEGで描く。complete は、指定された素材の画像とフォントが、すべて取得できたか。
+ * 一部でも欠けた画像は、保存して使い回してはいけない(欠けたままの画像が残り続けるため)。
+ */
+export async function renderOgpJpeg(sources: OgpSources): Promise<{ body: Buffer; complete: boolean }> {
   const [photo, resilient, aiko, brandFont, jpFont] = await Promise.all([
-    loadImage(photoSource, { width: OGP_WIDTH, height: OGP_HEIGHT, fit: "cover", format: "jpeg" }),
-    loadImage(setting.heroCharacterResilientUrl, { width: 220, height: 280, fit: "inside", format: "png" }),
-    loadImage(setting.heroCharacterAikoUrl, { width: 220, height: 280, fit: "inside", format: "png" }),
+    loadImage(sources.photoUrl, { width: OGP_WIDTH, height: OGP_HEIGHT, fit: "cover", format: "jpeg" }),
+    loadImage(sources.resilientUrl, { width: 220, height: 280, fit: "inside", format: "png" }),
+    loadImage(sources.aikoUrl, { width: 220, height: 280, fit: "inside", format: "png" }),
     loadGoogleFont("Dancing Script", 700, BRAND_MAIN + BRAND_SUB),
     loadGoogleFont("Noto Sans JP", 700, CATCHPHRASE + DISPLAY_URL),
   ]);
@@ -159,19 +161,16 @@ async function render(): Promise<ArrayBuffer> {
     ),
     { width: OGP_WIDTH, height: OGP_HEIGHT, fonts }
   );
-  return image.arrayBuffer();
-}
+  // ImageResponse はPNG(約1MB)になるので、SNSが短時間で取得できるよう、軽いJPEGに変換する
+  const body = await sharp(Buffer.from(await image.arrayBuffer()))
+    .flatten({ background: COLOR.base })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer();
 
-/** OGP画像(PNG)のレスポンスを返す。結果は1時間キャッシュし、CDN・SNS側にも1日キャッシュさせる。 */
-export async function ogpImageResponse(): Promise<Response> {
-  const now = Date.now();
-  if (!cached || cached.expiresAt < now) {
-    cached = { expiresAt: now + CACHE_TTL_MS, body: await render() };
-  }
-  return new Response(cached.body, {
-    headers: {
-      "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400",
-    },
-  });
+  const complete =
+    Boolean(brandFont && jpFont) &&
+    (!sources.photoUrl || Boolean(photo)) &&
+    (!sources.resilientUrl || Boolean(resilient)) &&
+    (!sources.aikoUrl || Boolean(aiko));
+  return { body, complete };
 }

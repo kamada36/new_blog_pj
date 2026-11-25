@@ -1,5 +1,5 @@
 import "server-only";
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import path from "path";
 
@@ -83,6 +83,32 @@ export async function uploadFileToR2(file: File, subdir: string): Promise<Upload
   );
 
   return { key, url: getPublicUrl(key), size: buffer.byteLength, mimeType };
+}
+
+/** 指定したキーで、内容をR2に保存する(同じキーがあれば上書き)。メディアライブラリには登録しない。 */
+export async function putObjectToR2(key: string, body: Buffer, contentType: string, cacheControl?: string): Promise<void> {
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: getBucketName(),
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      ...(cacheControl ? { CacheControl: cacheControl } : {}),
+    })
+  );
+}
+
+/** オブジェクトがR2にあるか。無い場合は false。接続の失敗などは例外にする。 */
+export async function objectExistsInR2(key: string, timeoutMs = 3000): Promise<boolean> {
+  try {
+    await getClient().send(new HeadObjectCommand({ Bucket: getBucketName(), Key: key }), {
+      abortSignal: AbortSignal.timeout(timeoutMs),
+    });
+    return true;
+  } catch (e) {
+    if ((e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) return false;
+    throw e;
+  }
 }
 
 export async function deleteFileFromR2(key: string): Promise<void> {
