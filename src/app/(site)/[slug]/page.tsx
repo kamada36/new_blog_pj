@@ -31,13 +31,13 @@ export async function generateMetadata({ params }: PageProps<"/[slug]">): Promis
       description,
       keywords: article.metaKeywords || undefined,
       alternates: { canonical: `${siteUrl}${contentPath(article.slug)}` },
-      ...socialMetadata({
+      ...(await socialMetadata({
         title,
         description,
         type: "article",
         url: `${siteUrl}${contentPath(article.slug)}`,
         imageUrl: article.coverImageUrl,
-      }),
+      })),
     };
   }
 
@@ -48,12 +48,12 @@ export async function generateMetadata({ params }: PageProps<"/[slug]">): Promis
     title: pageTitle,
     description: page.metaDescription,
     alternates: { canonical: `${siteUrl}${contentPath(page.slug)}` },
-    ...socialMetadata({
+    ...(await socialMetadata({
       title: pageTitle,
       description: page.metaDescription,
       type: "website",
       url: `${siteUrl}${contentPath(page.slug)}`,
-    }),
+    })),
   };
 }
 

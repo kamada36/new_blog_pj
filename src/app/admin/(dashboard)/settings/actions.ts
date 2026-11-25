@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidateSite } from "@/lib/revalidateSite";
 import { prisma } from "@/lib/prisma";
 import { resolveImageField } from "@/lib/uploadField";
+import { ensureSiteOgImage } from "@/lib/ogp/siteImage";
 
 const settingsSchema = z.object({
   siteName: z.string().trim().min(1).max(60),
@@ -142,11 +143,14 @@ export async function updateHeroAssets(formData: FormData) {
     ...(heroCharacterAikoUrl ? { heroCharacterAikoUrl } : {}),
   };
 
-  await prisma.siteSetting.upsert({
+  const setting = await prisma.siteSetting.upsert({
     where: { id: "singleton" },
     update: data,
     create: { id: "singleton", ...data },
   });
+
+  // SNS共有用の画像はヒーロー画像から作る。ページを更新する前に保存しておくと、作り直したページがすぐに新しい画像を指す
+  await ensureSiteOgImage(setting);
 
   revalidateSite();
   redirect("/admin/settings?status=success");
