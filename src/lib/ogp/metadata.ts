@@ -1,12 +1,16 @@
+import "server-only";
 import type { Metadata } from "next";
+import { getStoredSiteOgImageUrl } from "./siteImage";
+import { OGP_HEIGHT, OGP_WIDTH } from "./size";
 
-/** サイト共通のOGP画像のパス(app/ogp-image/route.tsx)。metadataBase を基準に、絶対URLへ展開される。 */
-export const DEFAULT_OGP_IMAGE_PATH = "/ogp-image/";
+/** 共通画像がまだ保存されていないときに指すパス(app/ogp-image/route.ts)。metadataBase を基準に、絶対URLへ展開される。 */
+const FALLBACK_OGP_IMAGE_PATH = "/ogp-image/";
 
-export const OGP_IMAGE_SIZE = { width: 1200, height: 630 } as const;
-
-/** 共通のOGP画像(ヒーローに似せた画像)。 */
-export const defaultOgpImage = { url: DEFAULT_OGP_IMAGE_PATH, ...OGP_IMAGE_SIZE, alt: "レジリエンサーCafe" };
+/** 共通のOGP画像(ヒーローに似せた画像)。保存済みなら静的ファイルのURL、無ければ生成するURL。 */
+export async function getDefaultOgImage() {
+  const url = (await getStoredSiteOgImageUrl()) ?? FALLBACK_OGP_IMAGE_PATH;
+  return { url, width: OGP_WIDTH, height: OGP_HEIGHT, alt: "レジリエンサーCafe" };
+}
 
 /**
  * 記事・固定ページ用の、SNS共有(OGP・Xカード)のメタデータ。
@@ -14,15 +18,15 @@ export const defaultOgpImage = { url: DEFAULT_OGP_IMAGE_PATH, ...OGP_IMAGE_SIZE,
  * 子のページで openGraph / twitter を指定すると、親(ルートのレイアウト)の指定は丸ごと置き換わる(項目ごとには引き継がれない)ため、
  * サイト名・画像・カードの種類も、ここで指定し直す。
  */
-export function socialMetadata(input: {
+export async function socialMetadata(input: {
   title: string;
   description?: string | null;
   url: string;
   type: "article" | "website";
   imageUrl?: string | null;
-}): Pick<Metadata, "openGraph" | "twitter"> {
+}): Promise<Pick<Metadata, "openGraph" | "twitter">> {
   const description = input.description || undefined;
-  const image = input.imageUrl ? { url: input.imageUrl } : defaultOgpImage;
+  const image = input.imageUrl ? { url: input.imageUrl } : await getDefaultOgImage();
   return {
     openGraph: {
       type: input.type,
