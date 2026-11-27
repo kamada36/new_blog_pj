@@ -106,6 +106,18 @@ export type OgpSources = {
 };
 
 /**
+ * JPEGの先頭に、標準のJFIFヘッダーを足す(sharpの出力には付かない)。
+ * Xでは、プログレッシブ形式・JFIFヘッダーなしの共通画像を使うページはカードが出ず、記事の画像(ベースライン形式・JFIFヘッダーあり)は
+ * カードが出たため、後者の形式にそろえる(形式が原因だとは確定していない)。mozjpeg の指定はプログレッシブ形式になるので、使わない。
+ */
+function withJfifHeader(jpeg: Buffer): Buffer {
+  if (jpeg[2] === 0xff && jpeg[3] === 0xe0) return jpeg;
+  // APP0: 長さ16、"JFIF"、版1.01、画素の縦横比 1:1、サムネイルなし
+  const app0 = Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]);
+  return Buffer.concat([jpeg.subarray(0, 2), app0, jpeg.subarray(2)]);
+}
+
+/**
  * OGP画像をJPEGで描く。complete は、指定された素材の画像とフォントが、すべて取得できたか。
  * 一部でも欠けた画像は、保存して使い回してはいけない(欠けたままの画像が残り続けるため)。
  */
@@ -162,10 +174,11 @@ export async function renderOgpJpeg(sources: OgpSources): Promise<{ body: Buffer
     { width: OGP_WIDTH, height: OGP_HEIGHT, fonts }
   );
   // ImageResponse はPNG(約1MB)になるので、SNSが短時間で取得できるよう、軽いJPEGに変換する
-  const body = await sharp(Buffer.from(await image.arrayBuffer()))
+  const jpeg = await sharp(Buffer.from(await image.arrayBuffer()))
     .flatten({ background: COLOR.base })
-    .jpeg({ quality: 85, mozjpeg: true })
+    .jpeg({ quality: 85 })
     .toBuffer();
+  const body = withJfifHeader(jpeg);
 
   const complete =
     Boolean(brandFont && jpFont) &&

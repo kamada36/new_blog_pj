@@ -15,7 +15,7 @@ import type { OgpSources } from "./render";
  */
 
 /** 画像のデザイン(render.tsx)を変えたら、この数字を増やす。増やさないと、保存済みの古い画像が使われ続ける。 */
-const DESIGN_VERSION = 1;
+const DESIGN_VERSION = 2;
 
 type HeroSetting = {
   heroBackgroundUrl: string | null;
